@@ -3,6 +3,7 @@
 
 import logging
 from camelot.core.conf import settings, SimpleSettings
+import os
 
 logging.basicConfig( level = logging.ERROR )
 logger = logging.getLogger( 'main' )
@@ -12,10 +13,16 @@ class MySettings( SimpleSettings ):
 
     # add an ENGINE or a CAMELOT_MEDIA_ROOT method here to connect
     # to another database or change the location where files are stored
-    #
-    # def ENGINE( self ):
-    #     from sqlalchemy import create_engine
-    #     return create_engine( 'postgresql://user:passwd@127.0.0.1/database' )
+
+    """SETTINGS_DIR = os.path.dirname(__file__)
+    CAMELOT_MEDIA_ROOT = os.path.abspath(os.path.join(SETTINGS_DIR, os.pardir))
+    
+    def ENGINE( self ):
+        from sqlalchemy import create_engine
+        path = os.path.abspath(os.path.join(CAMELOT_MEDIA_ROOT, 'subs.db')
+        return create_engine('sqlite:////'.join(path))"""
+    
+
     
     def setup_model( self ):
         """This function will be called at application startup, it is used to 

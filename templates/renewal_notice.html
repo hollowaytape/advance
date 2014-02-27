@@ -1,0 +1,72 @@
+<html>
+<head>
+  <title>Renewal Notice</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <style type="text/css">
+body, html {
+        font-family: Verdana, Arial, sans-serif;
+}
+{% block styles %}{% endblock %}
+  </style>
+  <link rel="stylesheet" type="text/css" >
+    <style>
+    body {
+        width: 8.5in;
+        margin: 0in .1875in;
+        }
+    .return_window{
+        /* Avery 5160 labels -- CSS and HTML by MM at Boulder Information Services */
+        width: 2.025in; /* plus .6 inches from padding */
+        height: .875in; /* plus .125 inches from padding */
+        padding: .125in .3in 0;
+        margin-right: .125in; /* the gutter */
+
+        float: left;
+
+        text-align: center;
+        overflow: hidden;
+
+        outline: 1px dotted; /* outline doesn't occupy space like border does */
+        }
+</head>
+<body>
+
+<table id="page_header" width="100%">
+  <tr>
+    <td><img src="advance_head.gif"></img>
+    <p align="center">PO Box 669 - 205 East First St - TOOMBS COUNTY - VIDALIA, GA 30475</p>
+    <p align="center">Phone 912-293-3131 - FAX 912-437-4899 - Email: theadvance@bellsouth.net</p></td>
+    <td align="right"><h1>Renewal Notice</h1></td>
+  </tr>
+</table>
+
+<hr>
+<h2 id="page_title">RENEWAL NOTICE</h2>
+<hr>
+<p>Dear Valued Subscriber,</p><br />
+<p>Your subscription to The Advance will become due on the expiration date indcated below. We welcome your renewal. If you like what you read in our newspaper, tell a friend. We also have Gift Subscriptions available. Call 537-3131 for more information.
+
+<p><strong>File Name:</strong> {{ file_name }}</p>
+<p><strong>Record Number:</strong> {{ record_number }}</p>
+<p><strong>Expiration Date:</strong> {{ expiration_date }</p>
+<p><strong>Amount Due:</strong> {{ price_12 }}, {{ price_6 }}</p>
+
+<p>Make check payable to The Advance and return mail to:</p><br>
+
+<p>The Advance</p>
+<p>PO Box 669</p>
+<p>Vidalia, GA 30475</p>
+
+<p><strong>SUBSCRIPTION RATES:</strong></p>
+<table width="75%">
+    <tr>In 304 Zip Code</tr>
+        <td>One Year - $30.00</td>
+        <td>Six Months - $19.50</td>
+    <tr>Out of 304 Zip Code</tr>
+        <td>One Year - $45.00</td>
+        <td>Six Months - $27.50</td>
+</table>
+<hr>
+<p align="center"><strong>RETAIN THIS BOTTOM PORTION FOR YOUR RECORDS</strong></p>
+</body>
+</html>
