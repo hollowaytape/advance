@@ -14,8 +14,8 @@ class MySettings( SimpleSettings ):
     # add an ENGINE or a CAMELOT_MEDIA_ROOT method here to connect
     # to another database or change the location where files are stored
 
-    """SETTINGS_DIR = os.path.dirname(__file__)
-    CAMELOT_MEDIA_ROOT = os.path.abspath(os.path.join(SETTINGS_DIR, os.pardir))
+    ROOT_DIR = os.path.dirname(__file__)
+    """CAMELOT_MEDIA_ROOT = os.path.abspath(os.path.join(SETTINGS_DIR, os.pardir))
     
     def ENGINE( self ):
         from sqlalchemy import create_engine

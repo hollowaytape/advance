@@ -13,6 +13,11 @@ from camelot.admin.action.list_action import ListContextAction
 from camelot.core.utils import ugettext_lazy as _
 from camelot.view.art import Icon
 
+import os
+import jinja2
+
+from main import MySettings
+
 class AddressLabels(ListContextAction):
     """Print a sheet of address labels from the selected records."""
     verbose_name= _('Print Address Labels')
@@ -32,9 +37,14 @@ class AddressLabels(ListContextAction):
         context = {'addresses': addresses}
         # TODO: Count the tuples and if above the limit per page (30? 35?), split them.
             
+        jinja_environment = jinja2.Environment(autoescape=True,
+                                               loader=jinja2.FileSystemLoader(os.path.join(MySettings.ROOT_DIR, 
+                                               'templates')))    
+            
         from camelot.view import action_steps
-        yield action_steps.PrintJinjaTemplate( template = 'templates/labels.html',
-                                               context = context )
+        yield action_steps.PrintJinjaTemplate(template = 'labels.html',
+                                               context = context,
+                                               environment = jinja_environment)
 
 class Subscription (Entity):
     __tablename__ = "subscription"
