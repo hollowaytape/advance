@@ -31,18 +31,13 @@
 
 </head>
 <body>
-{% for page in pages %}
-    <table>
-    {% for row in page %}
-        <tr>
-        {% for address in row %}
-            <td>
-                <div class="label"><p style="font-size:"14px">{{ address[0] }}<br>{{ address[1] }}<br>{{ address[2] }}</p></div>
-            </td>
-        {% endfor %}
-        </tr>
-    {% endfor %}
-    <div class="page-break"></div>
-{% endfor %}
+
+<div class="label"><img src="http://boulderinformationservices.files.wordpress.com/2011/08/barcode_sample.png" /><br>Human readable</div>
+<div class="label"><img src="http://boulderinformationservices.files.wordpress.com/2011/08/barcode_sample.png" /><br>Human readable</div>
+<div class="label"><img src="http://boulderinformationservices.files.wordpress.com/2011/08/barcode_sample.png" /><br>Human readable</div>
+<div class="label"><img src="http://boulderinformationservices.files.wordpress.com/2011/08/barcode_sample.png" /><br>Human readable</div>
+<div class="label">(Repeat 30 times)</div>
+<div class="page-break"></div>
+
 </body>
 </html>

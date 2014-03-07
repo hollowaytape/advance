@@ -18,11 +18,31 @@ import jinja2
 
 from main import MySettings
 
+from camelot.view.action_steps.print_preview import PrintHtml, PrintJinjaTemplate, PrintPreview
+
 def chunks(l, n):
     """ Yield successive n-sized chunks from l. Used to split address lists into page-sized chunks."""
     
     for i in xrange(0, len(l), n):
         yield l[i:i+n]
+        
+class PrintQtWebJinjaTemplate (PrintHtml):
+    from PyQt4.QtWebKit import QWebView
+    from camelot.view.action_steps import PrintPreview
+    from camelot.core.templates import environment
+    def __init__(self,
+                 template, 
+                 context={},
+                 environment = environment):
+        self.template = environment.get_template( template )
+        self.html = self.template.render( context )
+        self.context = context
+        super( PrintQtWebJinjaTemplate, self).__init__( self.html )
+    
+    def get_html( self ):
+        doc = QWebView() 
+        doc.setHtml(self.template.render( self.context ))
+        return doc
 
 """class RenewalNotice(Action):
     verbose_name = _('Print Renewal Notice')
@@ -78,18 +98,21 @@ class AddressLabels(ListContextAction):
             # Does the postal walk code go here somewhere?
             addresses.append((line_1, line_2, line_3))
         
-        # TODO: Split the addresses into appropriately-sized chunks.
-        # addresses = list(chunks(addresses, 30))
-        context = {'addresses': addresses}    
+        # Each row contains 3 addresses.
+        rows = list(chunks(addresses, 3))
+        # Each page contains 10 rows, or 30 addresses.
+        pages = list(chunks(rows, 10))
+        # The final result: a list (page) of lists (rows) of 3-tuples (addresses).
+        context = {'pages': pages}    
             
         jinja_environment = jinja2.Environment(autoescape=True,
                                                loader=jinja2.FileSystemLoader(os.path.join(MySettings.ROOT_DIR, 
                                                'templates')))    
-            
-        from camelot.view import action_steps
-        yield action_steps.PrintJinjaTemplate(template = 'labels.html',
-                                               context = context,
-                                               environment = jinja_environment)                                               
+                
+        qt = PrintQtWebJinjaTemplate(template = 'labels.html',
+                                     context = context,
+                                     environment = jinja_environment)
+        yield PrintPreview(qt)                                              
                                                
 class Subscription (Entity):
     __tablename__ = "subscription"
