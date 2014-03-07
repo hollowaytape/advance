@@ -18,24 +18,69 @@ import jinja2
 
 from main import MySettings
 
+def chunks(l, n):
+    """ Yield successive n-sized chunks from l. Used to split address lists into page-sized chunks."""
+    
+    for i in xrange(0, len(l), n):
+        yield l[i:i+n]
+
+"""class RenewalNotice(Action):
+    verbose_name = _('Print Renewal Notice')
+    icon = Icon('tango/16x16/actions-document-print-preview.png')
+    tooltip = _('Print Renewal Notice')
+    
+    def model_run(self, model_context):"""
+        
+        
+class AddressList(ListContextAction):
+    """Print a list of addresses from the selected records."""
+    verbose_name = _('Print Address List')
+    icon = Icon('tango/16x16/actions/document-print-preview.png')
+    tooltip = _('Print Address List')
+    
+    def model_run(self, model_context):
+        iterator = model_context.get_selection()
+        addresses = []
+        for a in iterator:
+            # For each address, create a tuple of relevant fields to place in the context dict.
+            name = "%s, %s" % (a.Last_Name, a.First_Name)
+            address = a.Address
+            city = a.City
+            state = a.State
+            zip = a.ZIP
+            phone = a.Phone
+            email = a.Email
+            addresses.append((name, address, city, state, zip, phone, email))
+        context = {'addresses': addresses}
+            
+        JINJA_ENVIRONMENT = jinja2.Environment(autoescape=True,
+                                               loader=jinja2.FileSystemLoader(os.path.join(MySettings.ROOT_DIR, 
+                                               'templates')))
+        
+        from camelot.view import action_steps
+        yield action_steps.PrintJinjaTemplate(template = 'addresses.html',
+                                                         context = context,
+                                                         environment = JINJA_ENVIRONMENT)
+
 class AddressLabels(ListContextAction):
     """Print a sheet of address labels from the selected records."""
     verbose_name= _('Print Address Labels')
     icon = Icon('tango/16x16/actions/document-print-preview.png')
     tooltip = _('Print Address Labels')
 
-    def model_run( self, model_context ):
+    def model_run(self, model_context):
         iterator = model_context.get_selection()
         addresses = []
-        for address in iterator:
-            line_1 = "%s %s" % (address.First_Name, address.Last_Name)
-            line_2 = address.Address
-            line_3 = "%s, %s %s" % (address.City, address.State, address.ZIP)
+        for a in iterator:
+            line_1 = "%s %s" % (a.First_Name, a.Last_Name)
+            line_2 = a.Address
+            line_3 = "%s, %s %s" % (a.City, a.State, a.ZIP)
             # Does the postal walk code go here somewhere?
             addresses.append((line_1, line_2, line_3))
-                
-        context = {'addresses': addresses}
-        # TODO: Count the tuples and if above the limit per page (30? 35?), split them.
+        
+        # TODO: Split the addresses into appropriately-sized chunks.
+        # addresses = list(chunks(addresses, 30))
+        context = {'addresses': addresses}    
             
         jinja_environment = jinja2.Environment(autoescape=True,
                                                loader=jinja2.FileSystemLoader(os.path.join(MySettings.ROOT_DIR, 
@@ -44,8 +89,8 @@ class AddressLabels(ListContextAction):
         from camelot.view import action_steps
         yield action_steps.PrintJinjaTemplate(template = 'labels.html',
                                                context = context,
-                                               environment = jinja_environment)
-
+                                               environment = jinja_environment)                                               
+                                               
 class Subscription (Entity):
     __tablename__ = "subscription"
     
@@ -102,33 +147,15 @@ class Subscription (Entity):
         # Actions for a single record - renewal notices.
         form_actions = [
         # RenewalNotice(),
+        # RenewSixMonths(),
+        # RenewTwelveMonths(),
         ]
         
         # Actions encompassing the whole table or a selection of it - address labels, address lists.
         list_actions = [
         AddressLabels(),
-        # AddressList(),
+        AddressList(),
         ]
     
     def __Unicode__ (self):
         return self.Address
-            
-    """class RenewalNotice(Action):
-        verbose_name = _('Renewal Notice')
-    
-        def model_run(self, model_context):
-            from camelot.view.action_steps import PrintHtml
-            import datetime
-            from jinja import Environment, FileSystemLoader
-            from pkg_resources import resource_filename
-            import subs
-            from camelot.core.conf import settings 
-            fileloader = FileSystemLoader(resource_filename(subs.__name__, 'templates'))
-            e = Environment(loader=fileloader)
-        
-            context = {
-            'customer':"%s %s\n%s\n%s, %s %s"  % (subscription.FirstName, subscription.LastName, subscription.Address, 
-                                              subscription.City, subscription.State, subscription.ZIP),"""
-
-
- 

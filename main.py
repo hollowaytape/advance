@@ -1,9 +1,8 @@
 # Copyright 2014 Max Silbiger.
 # Created using the Camelot application framework, with its source made open under a GPL license.
 
-import logging
 from camelot.core.conf import settings, SimpleSettings
-import os
+import logging, os, jinja2
 
 logging.basicConfig( level = logging.ERROR )
 logger = logging.getLogger( 'main' )

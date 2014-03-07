@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            width: 8.5in;
+            margin: 0in .1875in;
+            }
+        table, th, td
+            {
+            border: 1px solid black;
+            }
+        .page-break  {
+            clear: left;
+            display:block;
+            page-break-after:always;
+            }
+        </style>
+</head>
+<body>
+<h3 align="center">Advance Publishing - Addresses</h3>
+<table>
+    table-layout: fixed;
+    width:100%;>
+    <tr>
+        <th width="20%">Name</th>
+        <th width="20%">Address</th>
+        <th width="15%">City</th>
+        <th width="5%">State</th>
+        <th width="10%">ZIP</th>
+        <th width="15%">Phone</th>
+        <th width="15%">Email</th>
+    </tr>
+    {% for a in addresses %}
+    <tr>
+        <td>{{ a[0] }}</td>
+        <td>{{ a[1] }}</td>
+        <td>{{ a[2] }}</td>
+        <td>{{ a[3] }}</td>
+        <td>{{ a[4] }}</td>
+        <td>{{ a[5] }}</td>
+        <td>{{ a[6] }}</td>
+    </tr>
+    {% endfor %}
+</table>
+<div class="page-break"></div>
+
+</body>
+</html>
