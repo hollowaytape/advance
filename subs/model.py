@@ -19,6 +19,7 @@ import jinja2
 from main import MySettings
 
 from camelot.view.action_steps.print_preview import PrintHtml, PrintJinjaTemplate, PrintPreview
+from PyQt4.QtWebKit import QWebView, QWebPage
 
 def chunks(l, n):
     """ Yield successive n-sized chunks from l. Used to split address lists into page-sized chunks."""
@@ -26,8 +27,7 @@ def chunks(l, n):
     for i in xrange(0, len(l), n):
         yield l[i:i+n]
         
-class PrintQtWebJinjaTemplate (PrintHtml):
-    from PyQt4.QtWebKit import QWebView
+class GetJinjaHtml (PrintHtml):
     from camelot.view.action_steps import PrintPreview
     from camelot.core.templates import environment
     def __init__(self,
@@ -37,12 +37,27 @@ class PrintQtWebJinjaTemplate (PrintHtml):
         self.template = environment.get_template( template )
         self.html = self.template.render( context )
         self.context = context
-        super( PrintQtWebJinjaTemplate, self).__init__( self.html )
+        super( GetJinjaHtml, self).__init__( self.html )
     
     def get_html( self ):
         doc = QWebView() 
         doc.setHtml(self.template.render( self.context ))
         return doc
+        
+class WebKitPrintPreview(PrintPreview):
+    """create webview in gui thread to make use of QPixmaps"""
+    def __init__(self,  html):
+        # create a non-widget object that can be passed to init and moved to another thread
+        self.dummy =  QWebPage() 
+        super(WebKitPrintPreview, self).__init__(document=self.dummy )
+        self.html = html
+        
+    def gui_run(self,  gui_context):
+        self.document =  QWebView()
+        self.document.setHtml(self.html )        
+        self.document.settings().PrintElementBackgrounds=True
+
+        super(WebKitPrintPreview, self).gui_run(gui_context)
 
 """class RenewalNotice(Action):
     verbose_name = _('Print Renewal Notice')
@@ -109,10 +124,14 @@ class AddressLabels(ListContextAction):
                                                loader=jinja2.FileSystemLoader(os.path.join(MySettings.ROOT_DIR, 
                                                'templates')))    
                 
-        qt = PrintQtWebJinjaTemplate(template = 'labels.html',
-                                     context = context,
-                                     environment = jinja_environment)
-        yield PrintPreview(qt)                                              
+
+        # Render the jinja template + context as HTML.
+        # Pass it to WebKitPrintPreview as the html argument.
+        qt = GetJinjaHtml(template = 'labels.html',
+                          context = context,
+                          environment = jinja_environment)
+        html = qt.get_html()
+        yield PrintPreview(html)                                          
                                                
 class Subscription (Entity):
     __tablename__ = "subscription"
