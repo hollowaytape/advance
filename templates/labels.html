@@ -10,8 +10,8 @@
         }
     .label{
         /* Avery 5160 labels -- CSS and HTML by MM at Boulder Information Services */
-        width: 2.025in; /* plus .6 inches from padding */
-        height: .875in; /* plus .125 inches from padding */
+        width: 2.625in; /* plus .6 inches from padding */
+        height: 1.0in; /* plus .125 inches from padding */
         padding: .125in .3in 0;
         margin-right: .125in; /* the gutter */
 
@@ -21,6 +21,8 @@
         overflow: hidden;
 
         outline: 1px dotted; /* outline doesn't occupy space like border does */
+        
+        font-size: 20px;
         }
     .page-break  {
         clear: left;
@@ -37,7 +39,7 @@
         <tr>
         {% for address in row %}
             <td>
-                <div class="label"><p style="font-size:"14px">{{ address[0] }}<br>{{ address[1] }}<br>{{ address[2] }}</p></div>
+                <div class="label">{{ address[0] }}<br>{{ address[1] }}<br>{{ address[2] }}</div>
             </td>
         {% endfor %}
         </tr>

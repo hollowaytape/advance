@@ -1,57 +1,76 @@
 <html>
 <head>
-  <title>Renewal Notice</title>
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-  <style type="text/css">
-body, html {
-        font-family: Verdana, Arial, sans-serif;
-}
-{% block styles %}{% endblock %}
-  </style>
-  <link rel="stylesheet" type="text/css" >
+    <title>Renewal Notice</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <style>
-    body {
-        width: 8.5in;
-        margin: 0in .1875in;
-        }
-    .return_window{
-        /* Avery 5160 labels -- CSS and HTML by MM at Boulder Information Services */
-        width: 2.025in; /* plus .6 inches from padding */
-        height: .875in; /* plus .125 inches from padding */
-        padding: .125in .3in 0;
-        margin-right: .125in; /* the gutter */
+        body {
+            width: 8.5in;
+            height: 11.0in;
+            margin: 0in .1875in; 
+            }
+        .return_window {
+            width: 3.125in;
+            height: 1.0in;
+            
+            margin-left: .5625in;
 
-        float: left;
-
-        text-align: center;
-        overflow: hidden;
-
-        outline: 1px dotted; /* outline doesn't occupy space like border does */
-        }
+            padding: .125in .3in 0; /* necessary? */
+            margin-right: .125in; /* the gutter */
+            
+            text-align: center;
+            
+            float: left;
+            overflow: hidden;
+            outline: 1px dotted; /* outline doesn't occupy space like border does */
+            }
+        .address_window {
+            width: 3.625in;
+            height: .8in;
+            
+            margin-left: .5625in;
+            
+            padding: .125 in .3in 0;
+            margin-right: .125in;
+            
+            float: left;
+            overflow: hidden;
+            outline: 1px dotted;
+            }
+        </style>
 </head>
 <body>
 
-<table id="page_header" width="100%">
-  <tr>
-    <td><img src="advance_head.gif"></img>
-    <p align="center">PO Box 669 - 205 East First St - TOOMBS COUNTY - VIDALIA, GA 30475</p>
-    <p align="center">Phone 912-293-3131 - FAX 912-437-4899 - Email: theadvance@bellsouth.net</p></td>
-    <td align="right"><h1>Renewal Notice</h1></td>
-  </tr>
+<table width="100%">
+    <tr>
+        <td><div class="return_window"><img src="/templates/advance_head.gif"></img>
+        <p>PO Box 669 - 205 East First St - TOOMBS COUNTY - VIDALIA, GA 30475</p>
+        <p>Phone 912-293-3131 - FAX 912-437-4899 - Email: theadvance@bellsouth.net</p></td></div>
+ 
+        <td><h1>Renewal Notice</h1></td>
+    </tr>
+    <tr>
+        <td><div class="address_window"><p>{{ name }}</p>
+        <p>{{ address }}</p>
+        <p>{{ city }}, {{ state }} {{ zip }}</p>
+        
+        <td>
+            <p><strong>File Name:</strong> {{ file_code }}</p>
+            <p><strong>Record Number:</strong> {{ record_number }}</p>
+            <p><strong>Expiration Date:</strong> {{ expiration_date }}</p>
+            <p><strong>Amount Due:</strong> ${{ price_twelve }} 12 months, ${{ price_six }} 6 months</p>
 </table>
 
 <hr>
-<h2 id="page_title">RENEWAL NOTICE</h2>
-<hr>
+<h2><strong>RENEWAL NOTICE</strong></h2>
 <p>Dear Valued Subscriber,</p><br />
-<p>Your subscription to The Advance will become due on the expiration date indcated below. We welcome your renewal. If you like what you read in our newspaper, tell a friend. We also have Gift Subscriptions available. Call 537-3131 for more information.
+<p>Your subscription to The Advance will become due on the expiration date indicated below. We welcome your renewal. If you like what you read in our newspaper, tell a friend. We also have Gift Subscriptions available. Call 537-3131 for more information.</p>
 
 <p><strong>File Name:</strong> {{ file_name }}</p>
 <p><strong>Record Number:</strong> {{ record_number }}</p>
-<p><strong>Expiration Date:</strong> {{ expiration_date }</p>
-<p><strong>Amount Due:</strong> {{ price_12 }}, {{ price_6 }}</p>
+<p><strong>Expiration Date:</strong> {{ expiration_date }}</p>
+<p><strong>Amount Due:</strong> ${{ price_twelve }} 12 months, ${{ price_six }} 6 months</p>
 
-<p>Make check payable to The Advance and return mail to:</p><br>
+<p>Make check payable to The Advance and return mail to:</p>
 
 <p>The Advance</p>
 <p>PO Box 669</p>
@@ -67,6 +86,6 @@ body, html {
         <td>Six Months - $27.50</td>
 </table>
 <hr>
-<p align="center"><strong>RETAIN THIS BOTTOM PORTION FOR YOUR RECORDS</strong></p>
+<p style="text-align:center; font-size:12px"><strong>RETAIN THIS BOTTOM PORTION FOR YOUR RECORDS</strong></p>
 </body>
 </html>

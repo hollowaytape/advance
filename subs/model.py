@@ -9,6 +9,7 @@ from sqlalchemy import Unicode, Date, Boolean, Integer
 
 import datetime
 
+from camelot.admin.action import Action
 from camelot.admin.action.list_action import ListContextAction
 from camelot.core.utils import ugettext_lazy as _
 from camelot.view.art import Icon
@@ -59,13 +60,50 @@ class WebKitPrintPreview(PrintPreview):
 
         super(WebKitPrintPreview, self).gui_run(gui_context)
 
-"""class RenewalNotice(Action):
+class RenewalNotice(Action):
     verbose_name = _('Print Renewal Notice')
     icon = Icon('tango/16x16/actions-document-print-preview.png')
     tooltip = _('Print Renewal Notice')
     
-    def model_run(self, model_context):"""
+    def model_run(self, model_context):
+        sub = model_context.get_object()
+        context = {}
         
+        context['name'] = "%s %s" % (sub.First_Name, sub.Last_Name)
+        context['address'] = sub.Address
+        context['city'] = sub.City
+        context['state'] = sub.State
+        context['zip'] = sub.ZIP
+        context['expiration_date'] = sub.End_Date
+        # File Code determines the price, and is based on the ZIP code.
+        # 30475 & 30475 are Vidalia, 30436 is Lyons, 304** is Out304, else is OutCo.
+        if sub.ZIP[0:2] == '304':
+            if sub.ZIP[3:4] in ('74', '75'):
+                context['file_code'] = 'VIDALIA'
+            elif sub.ZIP[3:4] == '36':
+                context['file_code'] = 'LYONS'
+            else:
+                context['file_code'] = 'OUT304'
+        else:
+            context['file_code'] = 'OUTCO'
+        
+        # Eventually I'll want to pull these prices from an editable table instead of hard-coding them.
+        if context['file_code'] == 'OUTCO':
+            context['price_six'] = 27.50
+            context['price_twelve'] = 45.00
+        else:
+            context['price_six'] = 19.50
+            context['price_twelve'] = 30.00
+            
+        jinja_environment = jinja2.Environment(autoescape=True,
+                                               loader=jinja2.FileSystemLoader(os.path.join(MySettings.ROOT_DIR, 
+                                               'templates')))
+                                               
+        qt = GetJinjaHtml(template = 'renewal_notice.html',
+                          context = context,
+                          environment = jinja_environment)
+        html = qt.get_html()
+        yield PrintPreview(html) 
         
 class AddressList(ListContextAction):
     """Print a list of addresses from the selected records."""
@@ -88,14 +126,15 @@ class AddressList(ListContextAction):
             addresses.append((name, address, city, state, zip, phone, email))
         context = {'addresses': addresses}
             
-        JINJA_ENVIRONMENT = jinja2.Environment(autoescape=True,
+        jinja_environment = jinja2.Environment(autoescape=True,
                                                loader=jinja2.FileSystemLoader(os.path.join(MySettings.ROOT_DIR, 
                                                'templates')))
         
-        from camelot.view import action_steps
-        yield action_steps.PrintJinjaTemplate(template = 'addresses.html',
-                                                         context = context,
-                                                         environment = JINJA_ENVIRONMENT)
+        qt = GetJinjaHtml(template = 'addresses.html',
+                          context = context,
+                          environment = jinja_environment)
+        html = qt.get_html()
+        yield PrintPreview(html)                   
 
 class AddressLabels(ListContextAction):
     """Print a sheet of address labels from the selected records."""
@@ -142,21 +181,7 @@ class Subscription (Entity):
     City = Column(Unicode(35), nullable = False)
     # Remember, these are unicode objects. Can't set the default to 'GA'.
     State = Column(Unicode(4), nullable = False, default = u'GA')
-    ZIP = Column(Unicode(9), nullable = False)    
-    
-    # "File_Code" refers to which service area the ZIP code falls under.
-    # Calculated columns are tough in Camelot, so I will implement it in the renewal notice.
-    """File_Code = Column(Unicode(9))
-    if ZIP[0:2] == '304':
-        if ZIP[3:4] in ('74', '75'):
-            File_Code = 'VIDALIA'
-        elif ZIP[3:4] == '36':
-            File_Code = 'LYONS'
-        else:
-            File_Code = 'OUT304'
-    else:
-        File_Code = 'OUTCO'"""
-        
+    ZIP = Column(Unicode(9), nullable = False)       
     Walk_Sequence = Column(Integer())
     Phone = Column(Unicode(20))
     Email = Column(Unicode(35))
@@ -188,7 +213,7 @@ class Subscription (Entity):
         
         # Actions for a single record - renewal notices.
         form_actions = [
-        # RenewalNotice(),
+        RenewalNotice(),
         # RenewSixMonths(),
         # RenewTwelveMonths(),
         ]
