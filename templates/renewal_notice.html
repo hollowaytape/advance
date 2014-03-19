@@ -6,16 +6,18 @@
         body {
             width: 8.5in;
             height: 11.0in;
-            margin: 0in .1875in; 
+            }
+        detachable {
+            margin: 0in .1875in;
             }
         .return_window {
             width: 3.125in;
             height: 1.0in;
             
             margin-left: .5625in;
+            margin-top: .6in; /* plus .1875 from margin = .7875in */
 
             padding: .125in .3in 0; /* necessary? */
-            margin-right: .125in; /* the gutter */
             
             text-align: center;
             
@@ -28,6 +30,7 @@
             height: .8in;
             
             margin-left: .5625in;
+            margin-top: .425in; /* .1875 page margin + .6 return_window margin_top + 1 return_window height + X = 2.2125 */
             
             padding: .125 in .3in 0;
             margin-right: .125in;
@@ -40,7 +43,7 @@
 </head>
 <body>
 
-<table width="100%">
+<table class="detach">
     <tr>
         <td><div class="return_window"><img src="/templates/advance_head.gif"></img>
         <p>PO Box 669 - 205 East First St - TOOMBS COUNTY - VIDALIA, GA 30475</p>

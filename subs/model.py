@@ -24,7 +24,7 @@ from PyQt4.QtWebKit import QWebView, QWebPage
 
 def chunks(l, n):
     """ Yield successive n-sized chunks from l. Used to split address lists into page-sized chunks."""
-    
+
     for i in xrange(0, len(l), n):
         yield l[i:i+n]
         
@@ -59,6 +59,27 @@ class WebKitPrintPreview(PrintPreview):
         self.document.settings().PrintElementBackgrounds=True
 
         super(WebKitPrintPreview, self).gui_run(gui_context)
+
+# Eventually I'd like to collapse SixMonths and TwelveMonths into one class that takes a "t" arg.
+class RenewSixMonths(Action):
+    verbose_name = _('Renew 6 Months')
+    icon = Icon('tango/16x16/actions-document-print-preview.png')
+    tooltip = verbose_name
+    
+    def model_run(self, model_context):
+        sub = model_context.get_object()
+        renewal_days = 0.5 * 365.24 # Six months.
+        sub.EndDate += datetime.timedelta(days=renewal_days)
+        
+class RenewTwelveMonths(Action):
+    verbose_name = _('Renew 1 Year')
+    icon = Icon('tango/16x16/actions-document-print-preview.png')
+    tooltip = verbose_name
+    
+    def model_run(self, model_context):
+        sub = model_context.get_object()
+        renewal_days = 365.24 # One year.
+        sub.EndDate += datetime.timedelta(days=renewal_days)
 
 class RenewalNotice(Action):
     verbose_name = _('Print Renewal Notice')
@@ -108,7 +129,7 @@ class RenewalNotice(Action):
 class AddressList(ListContextAction):
     """Print a list of addresses from the selected records."""
     verbose_name = _('Print Address List')
-    icon = Icon('tango/16x16/actions/document-print-preview.png')
+    icon = Icon('tango/16x16/actions/format-justify-full.png')
     tooltip = _('Print Address List')
     
     def model_run(self, model_context):
@@ -139,7 +160,7 @@ class AddressList(ListContextAction):
 class AddressLabels(ListContextAction):
     """Print a sheet of address labels from the selected records."""
     verbose_name= _('Print Address Labels')
-    icon = Icon('tango/16x16/actions/document-print-preview.png')
+    icon = Icon('tango/16x16/actions/document-print.png')
     tooltip = _('Print Address Labels')
 
     def model_run(self, model_context):
@@ -214,8 +235,8 @@ class Subscription (Entity):
         # Actions for a single record - renewal notices.
         form_actions = [
         RenewalNotice(),
-        # RenewSixMonths(),
-        # RenewTwelveMonths(),
+        RenewSixMonths(),
+        RenewTwelveMonths(),
         ]
         
         # Actions encompassing the whole table or a selection of it - address labels, address lists.
