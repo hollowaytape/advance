@@ -203,15 +203,16 @@ class Subscription (Entity):
     # Remember, these are unicode objects. Can't set the default to 'GA'.
     State = Column(Unicode(4), nullable = False, default = u'GA')
     ZIP = Column(Unicode(9), nullable = False)       
+    Sort_Code = Column(Integer())
     Walk_Sequence = Column(Integer())
+    City_Code = Column(Unicode(5))
+    Zone = Column(Integer())
+    Level = Column(Integer())
     Phone = Column(Unicode(20))
     Email = Column(Unicode(35))
     Start_Date = Column(Date(), default = datetime.datetime.today())
     # Default value of the start date + 365.24 days. ("years=1" is not valid, leads to bugs on leap days.)
     End_Date = Column(Date(), default = (datetime.datetime.today() + datetime.timedelta(days=365.24)))
-    # These show which of the publications this subscriber receives.
-    Advance = Column(Boolean)
-    Clipper = Column(Boolean)
     
     class Admin(EntityAdmin):
         verbose_name = 'Subscription'
@@ -223,13 +224,15 @@ class Subscription (Entity):
         'City',
         'State',
         'ZIP', 
-        'Walk_Sequence', 
         'Phone', 
         'Email', 
         'Start_Date', 
         'End_Date', 
-        'Advance', 
-        'Clipper'
+        'Sort_Code',
+        'Walk_Sequence', 
+        'City_Code',
+        'Zone',
+        'Level'
         ]
         
         # Actions for a single record - renewal notices.
