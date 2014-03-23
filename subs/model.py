@@ -91,7 +91,7 @@ class RenewalNotice(Action):
         context = {}
         
         context['name'] = "%s %s" % (sub.First_Name, sub.Last_Name)
-        context['address'] = sub.Address
+        context['address'] = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
         context['city'] = sub.City
         context['state'] = sub.State
         context['zip'] = sub.ZIP
@@ -137,13 +137,14 @@ class AddressList(ListContextAction):
         addresses = []
         for a in iterator:
             # For each address, create a tuple of relevant fields to place in the context dict.
-            name = "%s, %s" % (a.Last_Name, a.First_Name)
-            address = a.Address
+            name = "%s %s" % (a.First_Name, a.Last_Name)
+            address = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
             city = a.City
             state = a.State
             zip = a.ZIP
             phone = a.Phone
             email = a.Email
+            
             addresses.append((name, address, city, state, zip, phone, email))
         context = {'addresses': addresses}
             
@@ -168,7 +169,7 @@ class AddressLabels(ListContextAction):
         addresses = []
         for a in iterator:
             line_1 = "%s %s" % (a.First_Name, a.Last_Name)
-            line_2 = a.Address
+            line_2 = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
             line_3 = "%s, %s %s" % (a.City, a.State, a.ZIP)
             # Does the postal walk code go here somewhere?
             addresses.append((line_1, line_2, line_3))
@@ -192,27 +193,58 @@ class AddressLabels(ListContextAction):
                           environment = jinja_environment)
         html = qt.get_html()
         yield PrintPreview(html)                                          
-                                               
+
+class PO_Box (Entity):
+    __tablename__ = "po_boxes"
+    
+    Number = Column(Unicode(9))
+    City_Code = Column(Unicode(3))
+    Select_Code = Column(Unicode(2))
+    Walk_Sequence = Column(Integer())
+    Tag = Column(Boolean())
+    
+    class Admin(EntityAdmin):
+        verbose_name = 'PO Box'
+        
+        list_display = [
+        'Number',
+        'City_Code',
+        'Select_Code',
+        'Walk_Sequence',
+        'Tag',
+        ]
+        
 class Subscription (Entity):
-    __tablename__ = "subscription"
+    __tablename__ = "subscriptions"
     
     First_Name = Column(Unicode(35))
     Last_Name = Column(Unicode(35))
-    Address = Column(Unicode(70), nullable = False)
-    City = Column(Unicode(35), nullable = False)
+    Address = Column(Unicode(70))
+    # PO_Box either stores Line 2 of the address (apt #, etc) or specifies that it's a PO Box, with the number in Rural_Box.
+    PO_Box = Column(Unicode(30))
+    Rural_Box = Column(Integer())
+    City = Column(Unicode(35), nullable=False, default=u'VIDALIA')
     # Remember, these are unicode objects. Can't set the default to 'GA'.
-    State = Column(Unicode(4), nullable = False, default = u'GA')
-    ZIP = Column(Unicode(9), nullable = False)       
+    State = Column(Unicode(4), nullable=False, default = u'GA')
+    ZIP = Column(Unicode(9))  
+    
+    Phone = Column(Unicode(20))
+    Email = Column(Unicode(35))
+    
+    Start_Date = Column(Date(), default = datetime.datetime.today())
+    # Default value of the start date + 365.24 days. ("years=1" is not valid, leads to bugs on leap days.)
+    End_Date = Column(Date(), default = (datetime.datetime.today() + datetime.timedelta(days=365.24)))
+    
     Sort_Code = Column(Integer())
     Walk_Sequence = Column(Integer())
     City_Code = Column(Unicode(5))
     Zone = Column(Integer())
     Level = Column(Integer())
-    Phone = Column(Unicode(20))
-    Email = Column(Unicode(35))
-    Start_Date = Column(Date(), default = datetime.datetime.today())
-    # Default value of the start date + 365.24 days. ("years=1" is not valid, leads to bugs on leap days.)
-    End_Date = Column(Date(), default = (datetime.datetime.today() + datetime.timedelta(days=365.24)))
+    
+    Advance = Column(Boolean(), default=True)
+    Clipper = Column(Boolean(), default=False)
+    
+    
     
     class Admin(EntityAdmin):
         verbose_name = 'Subscription'
@@ -221,12 +253,14 @@ class Subscription (Entity):
         'First_Name', 
         'Last_Name', 
         'Address', 
+        'PO_Box',
+        'Rural_Box',
         'City',
         'State',
         'ZIP', 
         'Phone', 
-        'Email', 
-        'Start_Date', 
+        'Email',  
+        'Start_Date',
         'End_Date', 
         'Sort_Code',
         'Walk_Sequence', 
@@ -234,6 +268,7 @@ class Subscription (Entity):
         'Zone',
         'Level'
         ]
+        force_columns_width = [20, 20, 40, 10, 10, 15, 5, 10, 15, 15, 20, 20, 10, 10, 10, 10, 10]
         
         # Actions for a single record - renewal notices.
         form_actions = [

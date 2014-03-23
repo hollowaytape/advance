@@ -39,6 +39,9 @@
             overflow: hidden;
             outline: 1px dotted;
             }
+        letter {
+            margin-left: 1in;
+            margin-right: 1in;
         </style>
 </head>
 <body>
@@ -57,13 +60,14 @@
         <p>{{ city }}, {{ state }} {{ zip }}</p>
         
         <td>
-            <p><strong>File Name:</strong> {{ file_code }}</p>
+            <p><strong>File Name:</strong> {{ file_name }}</p>
             <p><strong>Record Number:</strong> {{ record_number }}</p>
             <p><strong>Expiration Date:</strong> {{ expiration_date }}</p>
             <p><strong>Amount Due:</strong> ${{ price_twelve }} 12 months, ${{ price_six }} 6 months</p>
 </table>
 
 <hr>
+<div class="letter">
 <h2><strong>RENEWAL NOTICE</strong></h2>
 <p>Dear Valued Subscriber,</p><br />
 <p>Your subscription to The Advance will become due on the expiration date indicated below. We welcome your renewal. If you like what you read in our newspaper, tell a friend. We also have Gift Subscriptions available. Call 537-3131 for more information.</p>
@@ -90,5 +94,6 @@
 </table>
 <hr>
 <p style="text-align:center; font-size:12px"><strong>RETAIN THIS BOTTOM PORTION FOR YOUR RECORDS</strong></p>
+</div>
 </body>
 </html>
