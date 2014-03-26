@@ -222,7 +222,7 @@ class Subscription (Entity):
     Address = Column(Unicode(70))
     # PO_Box either stores Line 2 of the address (apt #, etc) or specifies that it's a PO Box, with the number in Rural_Box.
     PO_Box = Column(Unicode(30))
-    Rural_Box = Column(Integer())
+    Rural_Box = Column(Unicode(30))
     City = Column(Unicode(35), nullable=False, default=u'VIDALIA')
     # Remember, these are unicode objects. Can't set the default to 'GA'.
     State = Column(Unicode(4), nullable=False, default = u'GA')
@@ -236,10 +236,10 @@ class Subscription (Entity):
     End_Date = Column(Date(), default = (datetime.datetime.today() + datetime.timedelta(days=365.24)))
     
     Sort_Code = Column(Integer())
-    Walk_Sequence = Column(Integer())
+    Walk_Sequence = Column(Unicode(5))
     City_Code = Column(Unicode(5))
-    Zone = Column(Integer())
-    Level = Column(Integer())
+    Zone = Column(Unicode(5))
+    Level = Column(Unicode(5))
     
     Advance = Column(Boolean(), default=True)
     Clipper = Column(Boolean(), default=False)
