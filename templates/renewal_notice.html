@@ -41,13 +41,13 @@
             outline: 1px dotted;
             }
         letter {
-            margin-left: 1in;
-            margin-right: 1in;
-        .firstColumn {
+            margin-left: 1.0in;
+            margin-right: 1.0in;
+        td.firstColumn {
             text-align: right;
             font-weight: bold;
             }
-        .secondColumn {
+        td.secondColumn {
             text-align: left;
         </style>
 </head>
@@ -59,7 +59,7 @@
         <p>PO Box 669 - 205 East First St - TOOMBS COUNTY - VIDALIA, GA 30475</p>
         <p>Phone 912-293-3131 - FAX 912-437-4899 - Email: theadvance@bellsouth.net</p></td></div>
  
-        <td><h1>Renewal Notice</h1></td>
+        <td><h1><div style="outline: 1px dotted;"Renewal Notice<</div>/h1></td>
     </tr>
     <tr>
         <td><div class="address_window"><p>{{ name }}</p>
@@ -71,7 +71,7 @@
                 
             <tr>
                 <td class="firstColumn">File Name:</td>
-                <td class="secondColumn">{{ file_name }}</td>
+                <td class="secondColumn"><pre>{{ file_code }}</pre></td>
             </tr>
             <tr>
                 <td class="firstColumn">Record Number:</td>
@@ -100,7 +100,7 @@
 <table>      
             <tr>
                 <td class="firstColumn">File Name:</td>
-                <td class="secondColumn">{{ file_name }}</td>
+                <td class="secondColumn"><pre>{{ file_code }}</pre></td>
             </tr>
             <tr>
                 <td class="firstColumn">Record Number:</td>
