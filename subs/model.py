@@ -59,6 +59,9 @@ class WebKitPrintPreview(PrintPreview):
         self.document.settings().PrintElementBackgrounds=True
 
         super(WebKitPrintPreview, self).gui_run(gui_context)
+        
+class ImportCSV(Action):
+    verbose_name = _('Import from CSV')
 
 # Eventually I'd like to collapse SixMonths and TwelveMonths into one class that takes a "t" arg.
 class RenewSixMonths(Action):
@@ -69,7 +72,7 @@ class RenewSixMonths(Action):
     def model_run(self, model_context):
         sub = model_context.get_object()
         renewal_days = 0.5 * 365.24 # Six months.
-        sub.EndDate += datetime.timedelta(days=renewal_days)
+        sub.End_Date += datetime.timedelta(days=renewal_days)
         
 class RenewTwelveMonths(Action):
     verbose_name = _('Renew 1 Year')
@@ -79,7 +82,7 @@ class RenewTwelveMonths(Action):
     def model_run(self, model_context):
         sub = model_context.get_object()
         renewal_days = 365.24 # One year.
-        sub.EndDate += datetime.timedelta(days=renewal_days)
+        sub.End_Date += datetime.timedelta(days=renewal_days)
 
 class RenewalNotice(Action):
     verbose_name = _('Print Renewal Notice')
@@ -90,8 +93,9 @@ class RenewalNotice(Action):
         sub = model_context.get_object()
         context = {}
         
+        context['record_number'] = sub.id
         context['name'] = "%s %s" % (sub.First_Name, sub.Last_Name)
-        context['address'] = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
+        context['address'] = "%s %s %s" % (sub.Address, sub.PO_Box, sub.Rural_Box)
         context['city'] = sub.City
         context['state'] = sub.State
         context['zip'] = sub.ZIP
@@ -110,11 +114,11 @@ class RenewalNotice(Action):
         
         # Eventually I'll want to pull these prices from an editable table instead of hard-coding them.
         if context['file_code'] == 'OUTCO':
-            context['price_six'] = 27.50
-            context['price_twelve'] = 45.00
+            context['price_six'] = "27.50"
+            context['price_twelve'] = "45.00"
         else:
-            context['price_six'] = 19.50
-            context['price_twelve'] = 30.00
+            context['price_six'] = "19.50"
+            context['price_twelve'] = "30.00"
             
         jinja_environment = jinja2.Environment(autoescape=True,
                                                loader=jinja2.FileSystemLoader(os.path.join(MySettings.ROOT_DIR, 

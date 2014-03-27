@@ -20,6 +20,7 @@
             padding: .125in .3in 0; /* necessary? */
             
             text-align: center;
+            font-size: 10px;
             
             float: left;
             overflow: hidden;
@@ -42,13 +43,19 @@
         letter {
             margin-left: 1in;
             margin-right: 1in;
+        .firstColumn {
+            text-align: right;
+            font-weight: bold;
+            }
+        .secondColumn {
+            text-align: left;
         </style>
 </head>
 <body>
 
 <table class="detach">
     <tr>
-        <td><div class="return_window"><img src="/templates/advance_head.gif"></img>
+        <td><div class="return_window"><img src="advance_head.gif"></img>
         <p>PO Box 669 - 205 East First St - TOOMBS COUNTY - VIDALIA, GA 30475</p>
         <p>Phone 912-293-3131 - FAX 912-437-4899 - Email: theadvance@bellsouth.net</p></td></div>
  
@@ -60,10 +67,28 @@
         <p>{{ city }}, {{ state }} {{ zip }}</p>
         
         <td>
-            <p><strong>File Name:</strong> {{ file_name }}</p>
-            <p><strong>Record Number:</strong> {{ record_number }}</p>
-            <p><strong>Expiration Date:</strong> {{ expiration_date }}</p>
-            <p><strong>Amount Due:</strong> ${{ price_twelve }} 12 months, ${{ price_six }} 6 months</p>
+            <table>
+                
+            <tr>
+                <td class="firstColumn">File Name:</td>
+                <td class="secondColumn">{{ file_name }}</td>
+            </tr>
+            <tr>
+                <td class="firstColumn">Record Number:</td>
+                <td class="secondColumn">{{ record_number }}</td>
+            </tr>
+            <tr>
+                <td class="firstColumn">Expiration Date:</td>
+                <td class="secondColumn">{{ expiration_date }}</td>
+            </tr>
+            <tr>
+                <td class="firstColumn">Amount Due:</td>
+                <td class="secondColumn">${{ price_twelve }} 12 months</td>
+            </tr>
+            <tr>
+                <td class="firstColumn"></td>
+                <td class="secondColumn">${{ price_six }} 6 months</td>
+            </table>
 </table>
 
 <hr>
@@ -72,10 +97,27 @@
 <p>Dear Valued Subscriber,</p><br />
 <p>Your subscription to The Advance will become due on the expiration date indicated below. We welcome your renewal. If you like what you read in our newspaper, tell a friend. We also have Gift Subscriptions available. Call 537-3131 for more information.</p>
 
-<p><strong>File Name:</strong> {{ file_name }}</p>
-<p><strong>Record Number:</strong> {{ record_number }}</p>
-<p><strong>Expiration Date:</strong> {{ expiration_date }}</p>
-<p><strong>Amount Due:</strong> ${{ price_twelve }} 12 months, ${{ price_six }} 6 months</p>
+<table>      
+            <tr>
+                <td class="firstColumn">File Name:</td>
+                <td class="secondColumn">{{ file_name }}</td>
+            </tr>
+            <tr>
+                <td class="firstColumn">Record Number:</td>
+                <td class="secondColumn">{{ record_number }}</td>
+            </tr>
+            <tr>
+                <td class="firstColumn">Expiration Date:</td>
+                <td class="secondColumn">{{ expiration_date }}</td>
+            </tr>
+            <tr>
+                <td class="firstColumn">Amount Due:</td>
+                <td class="secondColumn">${{ price_twelve }} 12 months</td>
+            </tr>
+            <tr>
+                <td class="firstColumn"></td>
+                <td class="secondColumn">${{ price_six }} 6 months</td>
+</table>
 
 <p>Make check payable to The Advance and return mail to:</p>
 
