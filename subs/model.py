@@ -95,7 +95,14 @@ class RenewalNotice(Action):
         
         context['record_number'] = sub.id
         context['name'] = "%s %s" % (sub.First_Name, sub.Last_Name)
-        context['address'] = "%s %s %s" % (sub.Address, sub.PO_Box, sub.Rural_Box)
+        if sub.PO_Box is None and sub.Rural_Box is None:
+            context['address'] = sub.Address
+        elif sub.Rural_Box is None:
+            context['address'] = "%s %s" % (sub.Address, sub.PO_Box)
+        elif sub.Address is None:
+            context['address'] = "%s %s" % (sub.PO_Box, sub.Rural_Box)
+        else:
+            context['address'] = "%s %s %s" % (sub.Address, sub.PO_Box, sub.Rural_Box)
         context['city'] = sub.City
         context['state'] = sub.State
         context['zip'] = sub.ZIP
@@ -221,26 +228,28 @@ class PO_Box (Entity):
 class Subscription (Entity):
     __tablename__ = "subscriptions"
     
+    id = Column(Integer(), primary_key=True)
+    
     First_Name = Column(Unicode(35))
     Last_Name = Column(Unicode(35))
     Address = Column(Unicode(70))
     # PO_Box either stores Line 2 of the address (apt #, etc) or specifies that it's a PO Box, with the number in Rural_Box.
     PO_Box = Column(Unicode(30))
     Rural_Box = Column(Unicode(30))
-    City = Column(Unicode(35), nullable=False, default=u'VIDALIA')
+    City = Column(Unicode(35), default=u'VIDALIA')
     # Remember, these are unicode objects. Can't set the default to 'GA'.
-    State = Column(Unicode(4), nullable=False, default = u'GA')
+    State = Column(Unicode(4), default = u'GA')
     ZIP = Column(Unicode(9))  
     
     Phone = Column(Unicode(20))
-    Email = Column(Unicode(35))
+    Email = Column(Unicode(35), nullable=True)
     
-    Start_Date = Column(Date(), default = datetime.datetime.today())
+    Start_Date = Column(Date(), default = datetime.datetime.today(), nullable=True)
     # Default value of the start date + 365.24 days. ("years=1" is not valid, leads to bugs on leap days.)
-    End_Date = Column(Date(), default = (datetime.datetime.today() + datetime.timedelta(days=365.24)))
+    End_Date = Column(Date(), default = (datetime.datetime.today() + datetime.timedelta(days=365.24)), nullable=True)
     
     Sort_Code = Column(Integer())
-    Walk_Sequence = Column(Unicode(5))
+    Walk_Sequence = Column(Integer())
     City_Code = Column(Unicode(5))
     Zone = Column(Unicode(5))
     Level = Column(Unicode(5))
@@ -277,8 +286,8 @@ class Subscription (Entity):
         # Actions for a single record - renewal notices.
         form_actions = [
         RenewalNotice(),
-        RenewSixMonths(),
-        RenewTwelveMonths(),
+        # RenewSixMonths(),
+        # RenewTwelveMonths(),
         ]
         
         # Actions encompassing the whole table or a selection of it - address labels, address lists.

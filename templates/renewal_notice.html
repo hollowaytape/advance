@@ -41,14 +41,16 @@
             outline: 1px dotted;
             }
         letter {
-            margin-left: 1.0in;
-            margin-right: 1.0in;
+            margin-left: 1.4in;
+            margin-right: 1.4in;
+            }
         td.firstColumn {
-            text-align: right;
+            float: right;
             font-weight: bold;
             }
         td.secondColumn {
-            text-align: left;
+            float: left;
+            }
         </style>
 </head>
 <body>
@@ -59,80 +61,92 @@
         <p>PO Box 669 - 205 East First St - TOOMBS COUNTY - VIDALIA, GA 30475</p>
         <p>Phone 912-293-3131 - FAX 912-437-4899 - Email: theadvance@bellsouth.net</p></td></div>
  
-        <td><h1><div style="outline: 1px dotted;"Renewal Notice<</div>/h1></td>
+        <td><h1 style="font-family:Arial Bold; align: center;"><div style="outline: 1px dotted">Renewal Notice</div></h1></td>
     </tr>
     <tr>
-        <td><div class="address_window"><p>{{ name }}</p>
-        <p>{{ address }}</p>
-        <p>{{ city }}, {{ state }} {{ zip }}</p>
+        <td><div class="address_window">
+        <pre>
+        {{ name }}
+        {{ address }}
+        {{ city }}, {{ state }} {{ zip }}
+        </pre>
         
         <td>
             <table>
                 
             <tr>
-                <td class="firstColumn">File Name:</td>
+                <td class="firstColumn"><b>File Name:</b></td>
                 <td class="secondColumn"><pre>{{ file_code }}</pre></td>
             </tr>
             <tr>
-                <td class="firstColumn">Record Number:</td>
-                <td class="secondColumn">{{ record_number }}</td>
+                <td class="firstColumn"><b>Record Number:</b></td>
+                <td class="secondColumn"><pre>{{ record_number }}</pre></td>
             </tr>
             <tr>
-                <td class="firstColumn">Expiration Date:</td>
-                <td class="secondColumn">{{ expiration_date }}</td>
+                <td class="firstColumn"><b>Expiration Date:</b></td>
+                <td class="secondColumn"><pre>{{ expiration_date }}</pre></td>
             </tr>
             <tr>
-                <td class="firstColumn">Amount Due:</td>
-                <td class="secondColumn">${{ price_twelve }} 12 months</td>
+                <td class="firstColumn"><b>Amount Due:</b></td>
+                <td class="secondColumn"><pre>${{ price_twelve }} 12 months</pre></td>
             </tr>
             <tr>
                 <td class="firstColumn"></td>
-                <td class="secondColumn">${{ price_six }} 6 months</td>
+                <td class="secondColumn"><pre>${{ price_six }} 6 months</pre></td>
+            </tr>
             </table>
+    </tr>
 </table>
 
 <hr>
 <div class="letter">
 <h2><strong>RENEWAL NOTICE</strong></h2>
-<p>Dear Valued Subscriber,</p><br />
-<p>Your subscription to The Advance will become due on the expiration date indicated below. We welcome your renewal. If you like what you read in our newspaper, tell a friend. We also have Gift Subscriptions available. Call 537-3131 for more information.</p>
-
-<table>      
+<p>Dear Valued Subscriber,
+<p>Your subscription to The Advance will become due on the expiration date indicated below. We welcome your renewal. If you like what you read in our newspaper, tell a friend. We also have Gift Subscriptions available. Call 537-3131 for more information.
+<br />
+<table>
             <tr>
-                <td class="firstColumn">File Name:</td>
+                <td class="firstColumn"><b>File Name:</b></td>
                 <td class="secondColumn"><pre>{{ file_code }}</pre></td>
             </tr>
             <tr>
-                <td class="firstColumn">Record Number:</td>
-                <td class="secondColumn">{{ record_number }}</td>
+                <td class="firstColumn"><b>Record Number:</b></td>
+                <td class="secondColumn"><pre>{{ record_number }}</pre></td>
             </tr>
             <tr>
-                <td class="firstColumn">Expiration Date:</td>
-                <td class="secondColumn">{{ expiration_date }}</td>
+                <td class="firstColumn"><b>Expiration Date:</b></td>
+                <td class="secondColumn"><pre>{{ expiration_date }}</pre></td>
             </tr>
             <tr>
-                <td class="firstColumn">Amount Due:</td>
-                <td class="secondColumn">${{ price_twelve }} 12 months</td>
+                <td class="firstColumn"><b>Amount Due:</b></td>
+                <td class="secondColumn"><pre>${{ price_twelve }} 12 months</pre></td>
             </tr>
             <tr>
                 <td class="firstColumn"></td>
-                <td class="secondColumn">${{ price_six }} 6 months</td>
-</table>
+                <td class="secondColumn"><pre>${{ price_six }} 6 months</pre></td>
+            </tr>
+            </table>
 
-<p>Make check payable to The Advance and return mail to:</p>
+<p>Make check payable to The Advance and return mail to:
 
-<p>The Advance</p>
-<p>PO Box 669</p>
-<p>Vidalia, GA 30475</p>
+The Advance
+PO Box 669
+Vidalia, GA 30475
 
 <p><strong>SUBSCRIPTION RATES:</strong></p>
 <table width="75%">
-    <tr>In 304 Zip Code</tr>
+    <tr>
+        <th>In 304 Zip Code</th>
+        <th>Out of 304 Zip Code</th>
+    </tr>
+    <tr>
         <td>One Year - $30.00</td>
         <td>Six Months - $19.50</td>
-    <tr>Out of 304 Zip Code</tr>
+    </tr>
+    <tr>
         <td>One Year - $45.00</td>
         <td>Six Months - $27.50</td>
+    </tr>
 </table>
 <hr>
 <p style="text-align:center; font-size:12px"><strong>RETAIN THIS BOTTOM PORTION FOR YOUR RECORDS</strong></p>
