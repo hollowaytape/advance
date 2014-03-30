@@ -14,7 +14,7 @@ class MySettings( SimpleSettings ):
     # to another database or change the location where files are stored
 
     ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-    CAMELOT_MEDIA_ROOT = os.path.abspath(os.path.join(ROOT_DIR, os.curdir))
+    CAMELOT_MEDIA_ROOT = os.path.abspath(os.path.join(ROOT_DIR, 'images'))
     
     def ENGINE( self ):
         from sqlalchemy import create_engine

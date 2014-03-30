@@ -6,6 +6,7 @@
         body {
             width: 8.5in;
             height: 11.0in;
+            font-family: Helvetica;
             }
         detachable {
             margin: 0in .1875in;
@@ -17,10 +18,10 @@
             margin-left: .5625in;
             margin-top: .6in; /* plus .1875 from margin = .7875in */
 
-            padding: .125in .3in 0; /* necessary? */
+            padding: .125in .3in 0;
             
             text-align: center;
-            font-size: 10px;
+            font-size: 9px;
             
             float: left;
             overflow: hidden;
@@ -33,7 +34,7 @@
             margin-left: .5625in;
             margin-top: .425in; /* .1875 page margin + .6 return_window margin_top + 1 return_window height + X = 2.2125 */
             
-            padding: .125 in .3in 0;
+            padding: .125in .3in 0;
             margin-right: .125in;
             
             float: left;
@@ -41,12 +42,11 @@
             outline: 1px dotted;
             }
         letter {
-            margin-left: 1.4in;
-            margin-right: 1.4in;
+            padding-left: 1.4in;
+            padding-right: 1.4in;
             }
         td.firstColumn {
             float: right;
-            font-weight: bold;
             }
         td.secondColumn {
             float: left;
@@ -57,11 +57,11 @@
 
 <table class="detach">
     <tr>
-        <td><div class="return_window"><img src="advance_head.gif"></img>
-        <p>PO Box 669 - 205 East First St - TOOMBS COUNTY - VIDALIA, GA 30475</p>
-        <p>Phone 912-293-3131 - FAX 912-437-4899 - Email: theadvance@bellsouth.net</p></td></div>
+        <td><div class="return_window"><img src="{{ image }}"></img>
+        PO Box 669 - 205 East First St - TOOMBS COUNTY - VIDALIA, GA 30475
+        Phone 912-293-3131 - FAX 912-437-4899 - Email: theadvance@bellsouth.net</td></div>
  
-        <td><h1 style="font-family:Arial Bold; align: center;"><div style="outline: 1px dotted">Renewal Notice</div></h1></td>
+        <td><h1 style="font-family:Arial Bold; align: center;"><div style="outline: 1px dotted; padding; 10px;">Renewal Notice</div></h1></td>
     </tr>
     <tr>
         <td><div class="address_window">
@@ -73,7 +73,6 @@
         
         <td>
             <table>
-                
             <tr>
                 <td class="firstColumn"><b>File Name:</b></td>
                 <td class="secondColumn"><pre>{{ file_code }}</pre></td>
@@ -103,8 +102,8 @@
 <h2><strong>RENEWAL NOTICE</strong></h2>
 <p>Dear Valued Subscriber,
 <p>Your subscription to The Advance will become due on the expiration date indicated below. We welcome your renewal. If you like what you read in our newspaper, tell a friend. We also have Gift Subscriptions available. Call 537-3131 for more information.
-<br />
-<table>
+
+<p><table>
             <tr>
                 <td class="firstColumn"><b>File Name:</b></td>
                 <td class="secondColumn"><pre>{{ file_code }}</pre></td>

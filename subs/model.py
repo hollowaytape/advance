@@ -12,15 +12,15 @@ import datetime
 from camelot.admin.action import Action
 from camelot.admin.action.list_action import ListContextAction
 from camelot.core.utils import ugettext_lazy as _
+from camelot.core.conf import settings
 from camelot.view.art import Icon
 
 import os
 import jinja2
 
-from main import MySettings
-
 from camelot.view.action_steps.print_preview import PrintHtml, PrintJinjaTemplate, PrintPreview
 from PyQt4.QtWebKit import QWebView, QWebPage
+from PyQt4.QtCore import QUrl, QFile
 
 def chunks(l, n):
     """ Yield successive n-sized chunks from l. Used to split address lists into page-sized chunks."""
@@ -60,10 +60,8 @@ class WebKitPrintPreview(PrintPreview):
 
         super(WebKitPrintPreview, self).gui_run(gui_context)
         
-class ImportCSV(Action):
-    verbose_name = _('Import from CSV')
 
-# Eventually I'd like to collapse SixMonths and TwelveMonths into one class that takes a "t" arg.
+"""# Eventually I'd like to collapse SixMonths and TwelveMonths into one class that takes a "t" arg.
 class RenewSixMonths(Action):
     verbose_name = _('Renew 6 Months')
     icon = Icon('tango/16x16/actions-document-print-preview.png')
@@ -82,16 +80,18 @@ class RenewTwelveMonths(Action):
     def model_run(self, model_context):
         sub = model_context.get_object()
         renewal_days = 365.24 # One year.
-        sub.End_Date += datetime.timedelta(days=renewal_days)
+        sub.End_Date += datetime.timedelta(days=renewal_days)"""
 
 class RenewalNotice(Action):
     verbose_name = _('Print Renewal Notice')
-    icon = Icon('tango/16x16/actions-document-print-preview.png')
+    icon = Icon('tango/16x16/actions/document-print-preview.png')
     tooltip = _('Print Renewal Notice')
     
     def model_run(self, model_context):
         sub = model_context.get_object()
         context = {}
+        
+        context['image'] = QUrl.fromLocalFile(os.path.abspath(os.path.join(settings.CAMELOT_MEDIA_ROOT, 'advance_head.gif')))
         
         context['record_number'] = sub.id
         context['name'] = "%s %s" % (sub.First_Name, sub.Last_Name)
@@ -128,7 +128,7 @@ class RenewalNotice(Action):
             context['price_twelve'] = "30.00"
             
         jinja_environment = jinja2.Environment(autoescape=True,
-                                               loader=jinja2.FileSystemLoader(os.path.join(MySettings.ROOT_DIR, 
+                                               loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
                                                'templates')))
                                                
         qt = GetJinjaHtml(template = 'renewal_notice.html',
@@ -140,7 +140,7 @@ class RenewalNotice(Action):
 class AddressList(ListContextAction):
     """Print a list of addresses from the selected records."""
     verbose_name = _('Print Address List')
-    icon = Icon('tango/16x16/actions/format-justify-full.png')
+    icon = Icon('tango/16x16/actions/format-justify-fill.png')
     tooltip = _('Print Address List')
     
     def model_run(self, model_context):
@@ -155,19 +155,24 @@ class AddressList(ListContextAction):
             zip = a.ZIP
             phone = a.Phone
             email = a.Email
+            sort = a.Sort_Code
+            walk = a.Walk_Sequence
+            city_code = a.City_Code
+            zone = a.Zone
+            level = a.Level
             
-            addresses.append((name, address, city, state, zip, phone, email))
+            addresses.append((name, address, city, state, zip, phone, email, sort, walk, city_code, zone, level))
         context = {'addresses': addresses}
             
         jinja_environment = jinja2.Environment(autoescape=True,
-                                               loader=jinja2.FileSystemLoader(os.path.join(MySettings.ROOT_DIR, 
+                                               loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
                                                'templates')))
         
         qt = GetJinjaHtml(template = 'addresses.html',
                           context = context,
                           environment = jinja_environment)
         html = qt.get_html()
-        yield PrintPreview(html)                   
+        yield PrintPreview(html)
 
 class AddressLabels(ListContextAction):
     """Print a sheet of address labels from the selected records."""
@@ -193,7 +198,7 @@ class AddressLabels(ListContextAction):
         context = {'pages': pages}    
             
         jinja_environment = jinja2.Environment(autoescape=True,
-                                               loader=jinja2.FileSystemLoader(os.path.join(MySettings.ROOT_DIR, 
+                                               loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
                                                'templates')))    
                 
 
