@@ -18,8 +18,9 @@ from camelot.view.art import Icon
 import os
 import jinja2
 
+from camelot.view.action_steps import WordJinjaTemplate
 from camelot.view.action_steps.print_preview import PrintHtml, PrintJinjaTemplate, PrintPreview
-from PyQt4.QtWebKit import QWebView, QWebPage
+from PyQt4.QtWebKit import QWebPage, QWebView
 from PyQt4.QtCore import QUrl, QFile
 
 def chunks(l, n):
@@ -42,14 +43,16 @@ class GetJinjaHtml (PrintHtml):
     
     def get_html( self ):
         doc = QWebView() 
-        doc.setHtml(self.template.render( self.context ))
+        # Qt needs a baseUrl with a trailing slash, so we can't just use CAMELOT_MEDIA_ROOT.
+        baseUrl = QUrl.fromLocalFile(os.path.join(settings.ROOT_DIR, "images/"))
+        doc.setHtml(self.template.render(self.context), baseUrl)
         return doc
         
 class WebKitPrintPreview(PrintPreview):
     """create webview in gui thread to make use of QPixmaps"""
     def __init__(self,  html):
         # create a non-widget object that can be passed to init and moved to another thread
-        self.dummy =  QWebPage() 
+        self.dummy =  QtWebKit.QWebPage() 
         super(WebKitPrintPreview, self).__init__(document=self.dummy )
         self.html = html
         
@@ -91,8 +94,6 @@ class RenewalNotice(Action):
         sub = model_context.get_object()
         context = {}
         
-        context['image'] = QUrl.fromLocalFile(os.path.abspath(os.path.join(settings.CAMELOT_MEDIA_ROOT, 'advance_head.png')))
-        
         context['record_number'] = sub.id
         context['name'] = "%s %s" % (sub.First_Name, sub.Last_Name)
         if sub.PO_Box is None and sub.Rural_Box is None:
@@ -131,9 +132,11 @@ class RenewalNotice(Action):
                                                loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
                                                'templates')))
                                                
-        yield PrintJinjaTemplate(template = 'RenewalTemplate_clean.xml',
+        qt = GetJinjaHtml(template = 'renewal_notice.html',
                           context = context,
                           environment = jinja_environment)
+        html = qt.get_html()
+        yield PrintPreview(html)
         
 class AddressList(ListContextAction):
     """Print a list of addresses from the selected records."""
