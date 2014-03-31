@@ -91,7 +91,7 @@ class RenewalNotice(Action):
         sub = model_context.get_object()
         context = {}
         
-        context['image'] = QUrl.fromLocalFile(os.path.abspath(os.path.join(settings.CAMELOT_MEDIA_ROOT, 'advance_head.gif')))
+        context['image'] = QUrl.fromLocalFile(os.path.abspath(os.path.join(settings.CAMELOT_MEDIA_ROOT, 'advance_head.png')))
         
         context['record_number'] = sub.id
         context['name'] = "%s %s" % (sub.First_Name, sub.Last_Name)
@@ -131,11 +131,9 @@ class RenewalNotice(Action):
                                                loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
                                                'templates')))
                                                
-        qt = GetJinjaHtml(template = 'renewal_notice.html',
+        yield PrintJinjaTemplate(template = 'RenewalTemplate_clean.xml',
                           context = context,
                           environment = jinja_environment)
-        html = qt.get_html()
-        yield PrintPreview(html) 
         
 class AddressList(ListContextAction):
     """Print a list of addresses from the selected records."""
@@ -220,7 +218,8 @@ class PO_Box (Entity):
     Tag = Column(Boolean())
     
     class Admin(EntityAdmin):
-        verbose_name = 'PO Box'
+        verbose_name = 'P.O. Box'
+        verbose_name_plural = 'P.O. Boxes'
         
         list_display = [
         'Number',
