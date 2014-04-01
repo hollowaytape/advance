@@ -23,7 +23,7 @@ class MyApplicationAdmin(ApplicationAdmin):
                           self,
                           # Icon(os.path.join(settings.CAMELOT_MEDIA_ROOT, 'images', 'onion22.png')),
                           Icon('tango/22x22/apps/internet-news-reader.png'),
-                          items = [Subscription, PO_Box]),
+                          items = [Subscription, PO_Box, Soperton_VC12345, LC12]),
                Section( _('Configuration'),
                           self,
                           Icon('tango/22x22/categories/preferences-system.png'),
