@@ -211,12 +211,47 @@ class AddressLabels(ListContextAction):
         html = qt.get_html()
         yield PrintPreview(html)                                          
 
+class LC12 (Entity):
+    __tablename__ = "lc12"
+    
+    Address = Column(Unicode(70))
+    Walk_Sequence = Column(Integer())
+    City_Code = Column(Integer())
+    
+    class Admin(EntityAdmin):
+        verbose_name = 'LC12'
+        verbose_name_plural = 'LC12'
+        
+        list_display = [
+        'Address',
+        'Walk_Sequence',
+        'City_Code'
+        ]
+        
+class Soperton_VC12345 (Entity):
+    __tablename__ = "soperton_vc12345"
+    
+    Address = Column(Unicode(70))
+    Sort_Code = Column(Integer())
+    City_RTE = Column(Integer())
+    
+    class Admin(EntityAdmin):
+        verbose_name = 'Soperton/VC12345'
+        verbose_name_plural = 'Soperton/VC12345'
+        
+        list_display = [
+        'Address',
+        'Sort_Code',
+        'City_RTE'
+        ]
+        
 class PO_Box (Entity):
     __tablename__ = "po_boxes"
     
     Number = Column(Unicode(9))
     City_Code = Column(Unicode(3))
     Select_Code = Column(Unicode(2))
+    Label_Stop = Column(Boolean())
     Walk_Sequence = Column(Integer())
     Tag = Column(Boolean())
     

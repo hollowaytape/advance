@@ -3,7 +3,7 @@ from camelot.admin.application_admin import ApplicationAdmin
 from camelot.admin.section import Section
 from camelot.core.utils import ugettext_lazy as _
 
-from subs.model import Subscription, PO_Box
+from subs.model import Subscription, PO_Box, Soperton_VC12345, LC12
 
 from camelot.core.conf import settings
 import os

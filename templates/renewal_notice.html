@@ -3,9 +3,10 @@
     <title>Renewal Notice</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <style>
+        @page {
+            size 8.5in 11in;
+            }
         body {
-            width: 8.5in;
-            height: 11.0in;
             font-family: Helvetica;
             }
         detachable {
@@ -21,11 +22,10 @@
             padding: .125in .3in 0;
             
             text-align: center;
-            font-size: 9px;
+            font-size: 8px;
             
             float: left;
             overflow: hidden;
-            outline: 1px dotted; /* outline doesn't occupy space like border does */
             }
         .address_window {
             width: 3.625in;
@@ -39,11 +39,11 @@
             
             float: left;
             overflow: hidden;
-            outline: 1px dotted;
             }
         letter {
-            padding-left: 1.4in;
-            padding-right: 1.4in;
+            margin-left: auto;
+            margin-right: auto;
+            width: 70%;
             }
         td.firstColumn {
             float: right;
@@ -57,11 +57,11 @@
 
 <table class="detach">
     <tr>
-        <td><div class="return_window"><img src="{{ image }}"></img>
-        PO Box 669 - 205 East First St - TOOMBS COUNTY - VIDALIA, GA 30475
+        <td><div class="return_window"><img src="advance_head.png"></img><br />
+        PO Box 669 - 205 East First St - TOOMBS COUNTY - VIDALIA, GA 30475<br />
         Phone 912-293-3131 - FAX 912-437-4899 - Email: theadvance@bellsouth.net</td></div>
  
-        <td><h1 style="font-family:Arial Bold; align: center;"><div style="outline: 1px dotted; padding; 10px;">Renewal Notice</div></h1></td>
+        <td><h1 style="font-family:Arial Bold; align: center; padding: .5in;"><div style="outline: 1px dotted; padding; 10px;">Renewal Notice</div></h1></td>
     </tr>
     <tr>
         <td><div class="address_window">
@@ -96,8 +96,9 @@
             </table>
     </tr>
 </table>
-
+<br />
 <hr>
+<br />
 <div class="letter">
 <h2><strong>RENEWAL NOTICE</strong></h2>
 <p>Dear Valued Subscriber,
@@ -147,7 +148,9 @@ Vidalia, GA 30475
         <td>Six Months - $27.50</td>
     </tr>
 </table>
+<br />
 <hr>
+<br />
 <p style="text-align:center; font-size:12px"><strong>RETAIN THIS BOTTOM PORTION FOR YOUR RECORDS</strong></p>
 </div>
 </body>

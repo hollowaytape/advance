@@ -81,10 +81,10 @@ def populate_po_starting_at(table, n=1):
                     id = i + n
                     number = line[1]
                     city = line[5]
-                    label_stop = line[6]
+                    label_stop = (line[6] == 'x')
                     select = line[7]
                     walk = line[8]
-                    tag = line[9]
+                    tag = (line[9] == 'x')
                     
                     record = (id, number, city, label_stop, select, walk, tag)
                     print record
@@ -104,9 +104,9 @@ def populate_sop_starting_at(table, n=1):
                     
                     record = (id, address, sort, city)
                     print record
-                    c.execute("INSERT INTO soperton_vc12345 (id, Address, Sort_Code, City_Code) VALUES (?, ?, ?, ?)", record)
+                    c.execute("INSERT INTO soperton_vc12345 (id, Address, Sort_Code, City_RTE) VALUES (?, ?, ?, ?)", record)
                     
-def populate_vc12_starting_at(table, n=1):
+def populate_lc12_starting_at(table, n=1):
     with open(table, 'rb') as f:
             plotlist = csv.reader(f, delimiter=',')
             plotlist.next()
@@ -120,7 +120,7 @@ def populate_vc12_starting_at(table, n=1):
                     
                     record = (id, address, walk_sequence, city_code)
                     print record
-                    c.execute("INSERT INTO soperton_vc12345 (id, Address, Walk_Sequence, City_Code) VALUES (?, ?, ?, ?)", record)                    
+                    c.execute("INSERT INTO lc12 (id, Address, Walk_Sequence, City_Code) VALUES (?, ?, ?, ?)", record)                    
                     
 # Each n value is the number of entries already in the database + 1.
 populate_starting_at('Vidalia.csv', 1)
@@ -134,7 +134,7 @@ populate_po_starting_at('VPOBoxes.csv', 1000)
 populate_sop_starting_at('Soperton.csv', 1)
 populate_sop_starting_at('VC12345.csv', 1600)
 
-populate_vc12_starting_at('VC12.csv', 1)
+populate_lc12_starting_at('LC12.csv', 1)
                     
 conn.commit()
 conn.close()
