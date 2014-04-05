@@ -18,6 +18,7 @@ from camelot.view.art import Icon
 import os
 import jinja2
 
+from camelot.view.action_steps.orm import FlushSession
 from camelot.view.action_steps import WordJinjaTemplate
 from camelot.view.action_steps.print_preview import PrintHtml, PrintJinjaTemplate, PrintPreview
 from PyQt4.QtWebKit import QWebPage, QWebView
@@ -74,6 +75,7 @@ class RenewSixMonths(Action):
         sub = model_context.get_object()
         renewal_days = 0.5 * 365.24 # Six months.
         sub.End_Date += datetime.timedelta(days=renewal_days)
+        yield FlushSession( model_context.session )
         
 class RenewTwelveMonths(Action):
     verbose_name = _('Renew 1 Year')
@@ -83,7 +85,8 @@ class RenewTwelveMonths(Action):
     def model_run(self, model_context):
         sub = model_context.get_object()
         renewal_days = 365.24 # One year.
-        sub.End_Date += datetime.timedelta(days=renewal_days)"""
+        sub.End_Date += datetime.timedelta(days=renewal_days)
+        yield FlushSession( model_context.session )"""
 
 class RenewalNotice(Action):
     verbose_name = _('Print Renewal Notice')
@@ -174,6 +177,7 @@ class AddressList(ListContextAction):
                           environment = jinja_environment)
         html = qt.get_html()
         yield PrintPreview(html)
+        
 
 class AddressLabels(ListContextAction):
     """Print a sheet of address labels from the selected records."""
