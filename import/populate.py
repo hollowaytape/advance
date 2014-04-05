@@ -42,20 +42,23 @@ def populate_starting_at(table, n=1):
             
             # Handling dates.
                     if line[16] == '':
-                        start_date = datetime.date(1950, 1, 1) 
+                        # start_date = datetime.date(1950, 1, 1) 
+                        start_date = None
                     else:
                         try:
                             start_date = datetime.datetime.strptime(line[16], "%m/%d/%Y").date()
                         except ValueError:
-                            start_date = datetime.date(1950, 1, 1) 
+                            # start_date = datetime.date(1950, 1, 1) 
+                            start_date = None
                             
                     if line[9] == '':
-                        end_date = datetime.date(1950, 1, 1) 
+                        end_date = None
                     else:
                         try:
                             end_date = datetime.datetime.strptime(line[9], "%y-%m-%d").date()
                         except ValueError:
-                            end_date = datetime.date(1950, 1, 1) 
+                            # end_date = datetime.date(1950, 1, 1) 
+                            end_date = None
 
                     sort_code = mk_int(line[11])
                     walk_sequence = mk_int(line[12])
