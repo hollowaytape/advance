@@ -19,16 +19,11 @@ class MyApplicationAdmin(ApplicationAdmin):
     def get_sections(self):
         from camelot.model.memento import Memento
         from camelot.model.i18n import Translation
-        return [ Section( _('Subscription'),
+        return (Section( _('Subscription'),
                           self,
                           # Icon(os.path.join(settings.CAMELOT_MEDIA_ROOT, 'images', 'onion22.png')),
                           Icon('tango/22x22/apps/internet-news-reader.png'),
-                          items = [Subscription, PO_Box, Soperton_VC12345, LC12]),
-               Section( _('Configuration'),
-                          self,
-                          Icon('tango/22x22/categories/preferences-system.png'),
-                          items = [Memento, Translation] )
-               ]
+                          items = [Subscription, PO_Box, Soperton_VC12345, LC12]),)
                
     def get_icon(self):
         """:return: the :class:`camelot.view.art.Icon` that should be used for the application"""

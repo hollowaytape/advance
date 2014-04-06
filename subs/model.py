@@ -23,6 +23,7 @@ from camelot.view.action_steps import WordJinjaTemplate
 from camelot.view.action_steps.print_preview import PrintHtml, PrintJinjaTemplate, PrintPreview
 from PyQt4.QtWebKit import QWebPage, QWebView
 from PyQt4.QtCore import QUrl, QFile
+from PyQt4.QtGui import QPixmap, QImage
 
 def chunks(l, n):
     """ Yield successive n-sized chunks from l. Used to split address lists into page-sized chunks."""
@@ -47,25 +48,33 @@ class GetJinjaHtml (PrintHtml):
         # Qt needs a baseUrl with a trailing slash, so we can't just use CAMELOT_MEDIA_ROOT.
         baseUrl = QUrl.fromLocalFile(os.path.join(settings.ROOT_DIR, "images/"))
         doc.setHtml(self.template.render(self.context), baseUrl)
-        return doc
+        return WebKitPrintPreview(doc)
         
 class WebKitPrintPreview(PrintPreview):
     """create webview in gui thread to make use of QPixmaps"""
-    def __init__(self,  html):
-        # create a non-widget object that can be passed to init and moved to another thread
-        self.dummy =  QtWebKit.QWebPage() 
-        super(WebKitPrintPreview, self).__init__(document=self.dummy )
+    def __init__(self,  html):        
+#       we will call  super(WebKitPrintPreview, self).__init__(document=self.document)
+#       later in gui_run() so that we can create document in gui_context to prevent QPixMap threading issues
         self.html = html
         
-    def gui_run(self,  gui_context):
+    def gui_run(self, gui_context):
         self.document =  QWebView()
-        self.document.setHtml(self.html )        
-        self.document.settings().PrintElementBackgrounds=True
-
-        super(WebKitPrintPreview, self).gui_run(gui_context)
+        #call super().__init__ delayed in gui context
+        super(WebKitPrintPreview, self).__init__(document=self.document)
         
+        self.margin_left = 24
+        self.margin_top = 15
+        self.margin_right = 24
+        self.margin_bottom = 5
+        self.margin_unit = QPrinter.Millimeter
+        self.page_size = QPrinter.A4
+        self.page_orientation = QPrinter.Portrait
+        
+        self.document.setHtml(self.html)        
+        super(WebKitPrintPreview, self).gui_run(gui_context)
 
-"""# Eventually I'd like to collapse SixMonths and TwelveMonths into one class that takes a "t" arg.
+        
+# Eventually I'd like to collapse SixMonths and TwelveMonths into one class that takes a "t" arg.
 class RenewSixMonths(Action):
     verbose_name = _('Renew 6 Months')
     icon = Icon('tango/16x16/actions-document-print-preview.png')
@@ -86,7 +95,7 @@ class RenewTwelveMonths(Action):
         sub = model_context.get_object()
         renewal_days = 365.24 # One year.
         sub.End_Date += datetime.timedelta(days=renewal_days)
-        yield FlushSession( model_context.session )"""
+        yield FlushSession( model_context.session )
 
 class RenewalNotice(Action):
     verbose_name = _('Print Renewal Notice')
@@ -166,12 +175,12 @@ class AddressList(ListContextAction):
             level = a.Level
             
             addresses.append((name, address, city, state, zip, phone, email, sort, walk, city_code, zone, level))
-        context = {'addresses': addresses}
             
+        pages = list(chunks(addresses, 32))
+        context = {'pages': pages}
         jinja_environment = jinja2.Environment(autoescape=True,
                                                loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
                                                'templates')))
-        
         qt = GetJinjaHtml(template = 'addresses.html',
                           context = context,
                           environment = jinja_environment)
@@ -332,8 +341,8 @@ class Subscription (Entity):
         # Actions for a single record - renewal notices.
         form_actions = [
         RenewalNotice(),
-        # RenewSixMonths(),
-        # RenewTwelveMonths(),
+        RenewSixMonths(),
+        RenewTwelveMonths(),
         ]
         
         # Actions encompassing the whole table or a selection of it - address labels, address lists.

@@ -19,12 +19,13 @@
         .page-break  {
             clear: left;
             display:block;
-            page-break-after:always;
+            page-break-before:always;
             }
         </style>
 </head>
 <body>
 <h3 align="center">Advance Publishing - Addresses</h3>
+{% for page in pages %}
 <table>
     <tr>
         <th width="27%">Name</th>
@@ -41,7 +42,7 @@
         <th width="6%">Lvl</th>
         
     </tr>
-    {% for a in addresses %}
+    {% for a in page %}
     <tr>
         <td>{{ a[0] }}</td>
         <td>{{ a[1] }}</td>
@@ -60,6 +61,6 @@
     {% endfor %}
 </table>
 <div class="page-break"></div>
-
+{% endfor %}
 </body>
 </html>
