@@ -9,7 +9,7 @@ from sqlalchemy import Unicode, Date, Boolean, Integer
 
 import datetime
 
-from camelot.admin.action import Action
+from camelot.admin.action import Action, ActionStep
 from camelot.admin.action.list_action import ListContextAction
 from camelot.core.utils import ugettext_lazy as _
 from camelot.core.conf import settings
@@ -18,12 +18,13 @@ from camelot.view.art import Icon
 import os
 import jinja2
 
+from camelot.view.model_thread import get_model_thread
 from camelot.view.action_steps.orm import FlushSession
 from camelot.view.action_steps import WordJinjaTemplate
 from camelot.view.action_steps.print_preview import PrintHtml, PrintJinjaTemplate, PrintPreview
 from PyQt4.QtWebKit import QWebPage, QWebView
-from PyQt4.QtCore import QUrl, QFile
-from PyQt4.QtGui import QPixmap, QImage
+from PyQt4.QtCore import QUrl, QFile, QObject
+from PyQt4.QtGui import QPixmap, QImage, QAction
 
 def chunks(l, n):
     """ Yield successive n-sized chunks from l. Used to split address lists into page-sized chunks."""
@@ -31,49 +32,24 @@ def chunks(l, n):
     for i in xrange(0, len(l), n):
         yield l[i:i+n]
         
-class GetJinjaHtml (PrintHtml):
-    from camelot.view.action_steps import PrintPreview
+class RenderJinjaHtml(PrintPreview):
     from camelot.core.templates import environment
     def __init__(self,
                  template, 
                  context={},
                  environment = environment):
-        self.template = environment.get_template( template )
-        self.html = self.template.render( context )
+        self.template = environment.get_template(template)
+        self.html = self.template.render(context)
         self.context = context
-        super( GetJinjaHtml, self).__init__( self.html )
     
-    def get_html( self ):
-        doc = QWebView() 
+    def gui_run(self, gui_context):
+        self.document = QWebView()
+        super(RenderJinjaHtml, self).__init__(document=self.document)
         # Qt needs a baseUrl with a trailing slash, so we can't just use CAMELOT_MEDIA_ROOT.
         baseUrl = QUrl.fromLocalFile(os.path.join(settings.ROOT_DIR, "images/"))
-        doc.setHtml(self.template.render(self.context), baseUrl)
-        return WebKitPrintPreview(doc)
-        
-class WebKitPrintPreview(PrintPreview):
-    """create webview in gui thread to make use of QPixmaps"""
-    def __init__(self,  html):        
-#       we will call  super(WebKitPrintPreview, self).__init__(document=self.document)
-#       later in gui_run() so that we can create document in gui_context to prevent QPixMap threading issues
-        self.html = html
-        
-    def gui_run(self, gui_context):
-        self.document =  QWebView()
-        #call super().__init__ delayed in gui context
-        super(WebKitPrintPreview, self).__init__(document=self.document)
-        
-        self.margin_left = 24
-        self.margin_top = 15
-        self.margin_right = 24
-        self.margin_bottom = 5
-        self.margin_unit = QPrinter.Millimeter
-        self.page_size = QPrinter.A4
-        self.page_orientation = QPrinter.Portrait
-        
-        self.document.setHtml(self.html)        
-        super(WebKitPrintPreview, self).gui_run(gui_context)
-
-        
+        self.document.setHtml(self.html, baseUrl)
+        super(RenderJinjaHtml, self).gui_run(gui_context)
+       
 # Eventually I'd like to collapse SixMonths and TwelveMonths into one class that takes a "t" arg.
 class RenewSixMonths(Action):
     verbose_name = _('Renew 6 Months')
@@ -144,18 +120,16 @@ class RenewalNotice(Action):
                                                loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
                                                'templates')))
                                                
-        qt = GetJinjaHtml(template = 'renewal_notice.html',
-                          context = context,
-                          environment = jinja_environment)
-        html = qt.get_html()
-        yield PrintPreview(html)
+        yield RenderJinjaHtml(template = 'renewal_notice.html',
+                              context = context,
+                              environment = jinja_environment)
         
 class AddressList(ListContextAction):
     """Print a list of addresses from the selected records."""
     verbose_name = _('Print Address List')
     icon = Icon('tango/16x16/actions/format-justify-fill.png')
     tooltip = _('Print Address List')
-    
+
     def model_run(self, model_context):
         iterator = model_context.get_selection()
         addresses = []
@@ -181,11 +155,10 @@ class AddressList(ListContextAction):
         jinja_environment = jinja2.Environment(autoescape=True,
                                                loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
                                                'templates')))
-        qt = GetJinjaHtml(template = 'addresses.html',
-                          context = context,
-                          environment = jinja_environment)
-        html = qt.get_html()
-        yield PrintPreview(html)
+                                               
+        yield RenderJinjaHtml(template = 'addresses.html',
+                              context = context,
+                              environment = jinja_environment)
         
 
 class AddressLabels(ListContextAction):
@@ -214,15 +187,10 @@ class AddressLabels(ListContextAction):
         jinja_environment = jinja2.Environment(autoescape=True,
                                                loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
                                                'templates')))    
-                
 
-        # Render the jinja template + context as HTML.
-        # Pass it to WebKitPrintPreview as the html argument.
-        qt = GetJinjaHtml(template = 'labels.html',
-                          context = context,
-                          environment = jinja_environment)
-        html = qt.get_html()
-        yield PrintPreview(html)                                          
+        yield RenderJinjaHtml(template = 'labels.html',
+                              context = context,
+                              environment = jinja_environment)                              
 
 class LC12 (Entity):
     __tablename__ = "lc12"
