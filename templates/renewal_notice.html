@@ -45,16 +45,15 @@
             margin-right: auto;
             width: 70%;
             }
-        td.firstColumn {
-            float: right;
-            }
-        td.secondColumn {
-            float: left;
+        .page-break  {
+            clear: left;
+            display:block;
+            page-break-before:always;
             }
         </style>
 </head>
 <body>
-
+{% for a in notices %}
 <table class="detach">
     <tr>
         <td><div class="return_window"><img src="advance_head.png"></img><br />
@@ -66,32 +65,32 @@
     <tr>
         <td><div class="address_window">
         <pre>
-        {{ name }}
-        {{ address }}
-        {{ city }}, {{ state }} {{ zip }}
+        {{ a.name }}
+        {{ a.address }}
+        {{ a.city }}, {{ a.state }} {{ a.zip }}
         </pre>
         
         <td>
             <table>
             <tr>
-                <td class="firstColumn"><b>File Name:</b></td>
-                <td class="secondColumn"><pre>{{ file_code }}</pre></td>
+                <td><b>File Name:</b></td>
+                <td><pre>{{ a.file_code }}</pre></td>
             </tr>
             <tr>
-                <td class="firstColumn"><b>Record Number:</b></td>
-                <td class="secondColumn"><pre>{{ record_number }}</pre></td>
+                <td><b>Record Number:</b></td>
+                <td><pre>{{ a.record_number }}</pre></td>
             </tr>
             <tr>
-                <td class="firstColumn"><b>Expiration Date:</b></td>
-                <td class="secondColumn"><pre>{{ expiration_date }}</pre></td>
+                <td><b>Expiration Date:</b></td>
+                <td><pre>{{ a.expiration_date }}</pre></td>
             </tr>
             <tr>
-                <td class="firstColumn"><b>Amount Due:</b></td>
-                <td class="secondColumn"><pre>${{ price_twelve }} 12 months</pre></td>
+                <td><b>Amount Due:</b></td>
+                <td><pre>${{ a.price_twelve }} 12 months</pre></td>
             </tr>
             <tr>
-                <td class="firstColumn"></td>
-                <td class="secondColumn"><pre>${{ price_six }} 6 months</pre></td>
+                <td></td>
+                <td><pre>${{ a.price_six }} 6 months</pre></td>
             </tr>
             </table>
     </tr>
@@ -107,23 +106,23 @@
 <p><table>
             <tr>
                 <td class="firstColumn"><b>File Name:</b></td>
-                <td class="secondColumn"><pre>{{ file_code }}</pre></td>
+                <td class="secondColumn"><pre>{{ a.file_code }}</pre></td>
             </tr>
             <tr>
                 <td class="firstColumn"><b>Record Number:</b></td>
-                <td class="secondColumn"><pre>{{ record_number }}</pre></td>
+                <td class="secondColumn"><pre>{{ a.record_number }}</pre></td>
             </tr>
             <tr>
                 <td class="firstColumn"><b>Expiration Date:</b></td>
-                <td class="secondColumn"><pre>{{ expiration_date }}</pre></td>
+                <td class="secondColumn"><pre>{{ a.expiration_date }}</pre></td>
             </tr>
             <tr>
                 <td class="firstColumn"><b>Amount Due:</b></td>
-                <td class="secondColumn"><pre>${{ price_twelve }} 12 months</pre></td>
+                <td class="secondColumn"><pre>${{ a.price_twelve }} 12 months</pre></td>
             </tr>
             <tr>
                 <td class="firstColumn"></td>
-                <td class="secondColumn"><pre>${{ price_six }} 6 months</pre></td>
+                <td class="secondColumn"><pre>${{ a.price_six }} 6 months</pre></td>
             </tr>
             </table>
 
@@ -154,5 +153,7 @@ Vidalia, GA 30475</pre>
 <br />
 <p style="text-align:center; font-size:12px"><strong>RETAIN THIS BOTTOM PORTION FOR YOUR RECORDS</strong></p>
 </div>
+<div class="page-break"></div>
+{% endfor %}
 </body>
 </html>

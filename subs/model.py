@@ -20,11 +20,9 @@ import jinja2
 
 from camelot.view.model_thread import get_model_thread
 from camelot.view.action_steps.orm import FlushSession
-from camelot.view.action_steps import WordJinjaTemplate
 from camelot.view.action_steps.print_preview import PrintHtml, PrintJinjaTemplate, PrintPreview
 from PyQt4.QtWebKit import QWebPage, QWebView
 from PyQt4.QtCore import QUrl, QFile, QObject
-from PyQt4.QtGui import QPixmap, QImage, QAction
 
 def chunks(l, n):
     """ Yield successive n-sized chunks from l. Used to split address lists into page-sized chunks."""
@@ -51,6 +49,7 @@ class RenderJinjaHtml(PrintPreview):
         super(RenderJinjaHtml, self).gui_run(gui_context)
        
 # Eventually I'd like to collapse SixMonths and TwelveMonths into one class that takes a "t" arg.
+
 class RenewSixMonths(Action):
     verbose_name = _('Renew 6 Months')
     icon = Icon('tango/16x16/actions-document-print-preview.png')
@@ -79,49 +78,54 @@ class RenewalNotice(Action):
     tooltip = _('Print Renewal Notice')
     
     def model_run(self, model_context):
-        sub = model_context.get_object()
-        context = {}
+        iterator = model_context.get_selection()
+        addresses = []
         
-        context['record_number'] = sub.id
-        context['name'] = "%s %s" % (sub.First_Name, sub.Last_Name)
-        if sub.PO_Box is None and sub.Rural_Box is None:
-            context['address'] = sub.Address
-        elif sub.Rural_Box is None:
-            context['address'] = "%s %s" % (sub.Address, sub.PO_Box)
-        elif sub.Address is None:
-            context['address'] = "%s %s" % (sub.PO_Box, sub.Rural_Box)
-        else:
-            context['address'] = "%s %s %s" % (sub.Address, sub.PO_Box, sub.Rural_Box)
-        context['city'] = sub.City
-        context['state'] = sub.State
-        context['zip'] = sub.ZIP
-        context['expiration_date'] = sub.End_Date
-        # File Code determines the price, and is based on the ZIP code.
-        # 30475 & 30475 are Vidalia, 30436 is Lyons, 304** is Out304, else is OutCo.
-        if sub.ZIP[0:2] == '304':
-            if sub.ZIP[3:4] in ('74', '75'):
-                context['file_code'] = 'VIDALIA'
-            elif sub.ZIP[3:4] == '36':
-                context['file_code'] = 'LYONS'
+        for a in iterator:
+            context = {}
+            context['record_number'] = a.id
+            context['name'] = "%s %s" % (a.First_Name, a.Last_Name)
+            if a.PO_Box is None and a.Rural_Box is None:
+                context['address'] = a.Address
+            elif a.Rural_Box is None:
+                context['address'] = "%s %s" % (a.Address, a.PO_Box)
+            elif a.Address is None:
+                context['address'] = "%s %s" % (a.PO_Box, a.Rural_Box)
             else:
-                context['file_code'] = 'OUT304'
-        else:
-            context['file_code'] = 'OUTCO'
+                context['address'] = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
+            context['city'] = a.City
+            context['state'] = a.State
+            context['zip'] = a.ZIP
+            context['expiration_date'] = a.End_Date
+            # File Code determines the price, and is based on the ZIP code.
+            # 30475 & 30475 are Vidalia, 30436 is Lyons, 304** is Out304, else is OutCo.
+            if a.ZIP[0:2] == '304':
+                if a.ZIP[3:4] in ('74', '75'):
+                    context['file_code'] = 'VIDALIA'
+                elif a.ZIP[3:4] == '36':
+                    context['file_code'] = 'LYONS'
+                else:
+                    context['file_code'] = 'OUT304'
+            else:
+                context['file_code'] = 'OUTCO'
         
         # Eventually I'll want to pull these prices from an editable table instead of hard-coding them.
-        if context['file_code'] == 'OUTCO':
-            context['price_six'] = "27.50"
-            context['price_twelve'] = "45.00"
-        else:
-            context['price_six'] = "19.50"
-            context['price_twelve'] = "30.00"
+            if context['file_code'] == 'OUTCO':
+                context['price_six'] = "27.50"
+                context['price_twelve'] = "45.00"
+            else:
+                context['price_six'] = "19.50"
+                context['price_twelve'] = "30.00"
+            addresses.append(context)
+            
+        pages = {'notices': addresses}
             
         jinja_environment = jinja2.Environment(autoescape=True,
                                                loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
                                                'templates')))
                                                
         yield RenderJinjaHtml(template = 'renewal_notice.html',
-                              context = context,
+                              context = pages,
                               environment = jinja_environment)
         
 class AddressList(ListContextAction):
@@ -170,12 +174,21 @@ class AddressLabels(ListContextAction):
     def model_run(self, model_context):
         iterator = model_context.get_selection()
         addresses = []
+        count = 0
+        
         for a in iterator:
             line_1 = "%s %s" % (a.First_Name, a.Last_Name)
             line_2 = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
             line_3 = "%s, %s %s" % (a.City, a.State, a.ZIP)
-            # Does the postal walk code go here somewhere?
-            addresses.append((line_1, line_2, line_3))
+            
+            right_1 = a.End_Date
+            right_2 = a.id
+            right_3 = "%s   %s" % (a.City_Code, a.Walk_Sequence)
+            addresses.append((line_1, line_2, line_3, right_1, right_2, right_3))
+            count += 1
+        
+        # The count is displayed in the final label of the printout. So, add it to the list.
+        addresses.append(('Count:', '', '', count, '', '', ''))
         
         # Each row contains 3 addresses.
         rows = list(chunks(addresses, 3))
@@ -190,7 +203,49 @@ class AddressLabels(ListContextAction):
 
         yield RenderJinjaHtml(template = 'labels.html',
                               context = context,
-                              environment = jinja_environment)                              
+                              environment = jinja_environment)             
+
+class AddressLabelsOutco(ListContextAction):
+    """Print a sheet of address labels from the selected records, plus a zone count."""
+    verbose_name= _('Print Address Labels')
+    icon = Icon('tango/16x16/actions/document-print.png')
+    tooltip = _('Print Address Labels')
+
+    def model_run(self, model_context):
+        iterator = model_context.get_selection()
+        addresses = []
+        count = 0
+        zone_counts = {}
+        
+        for a in iterator:
+            line_1 = "%s %s" % (a.First_Name, a.Last_Name)
+            line_2 = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
+            line_3 = "%s, %s %s" % (a.City, a.State, a.ZIP)
+            
+            right_1 = a.End_Date
+            right_2 = a.id
+            right_3 = "%s   %s" % (a.City_Code, a.Walk_Sequence)
+            addresses.append((line_1, line_2, line_3, right_1, right_2, right_3))
+            zone_counts[a.Zone] += 1
+            count += 1
+        
+        # The count is displayed in the final label of the printout. So, add it to the list.
+        addresses.append(('Count:', '', '', count, '', '', ''))
+        
+        # Each row contains 3 addresses.
+        rows = list(chunks(addresses, 3))
+        # Each page contains 10 rows, or 30 addresses.
+        pages = list(chunks(rows, 10))
+        # The final result: a list (page) of lists (rows) of 3-tuples (addresses).
+        context = {'pages': pages}    
+            
+        jinja_environment = jinja2.Environment(autoescape=True,
+                                               loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
+                                               'templates')))    
+
+        yield RenderJinjaHtml(template = 'labels.html',
+                              context = context,
+                              environment = jinja_environment)                                    
 
 class LC12 (Entity):
     __tablename__ = "lc12"
@@ -209,16 +264,16 @@ class LC12 (Entity):
         'City_Code'
         ]
         
-class Soperton_VC12345 (Entity):
-    __tablename__ = "soperton_vc12345"
+class Soperton (Entity):
+    __tablename__ = "soperton"
     
     Address = Column(Unicode(70))
     Sort_Code = Column(Integer())
     City_RTE = Column(Integer())
     
     class Admin(EntityAdmin):
-        verbose_name = 'Soperton/VC12345'
-        verbose_name_plural = 'Soperton/VC12345'
+        verbose_name = 'Soperton'
+        verbose_name_plural = 'Soperton'
         
         list_display = [
         'Address',
@@ -226,8 +281,25 @@ class Soperton_VC12345 (Entity):
         'City_RTE'
         ]
         
-class PO_Box (Entity):
-    __tablename__ = "po_boxes"
+class VC12345 (Entity):
+    __tablename__ = "vc12345"
+    
+    Address = Column(Unicode(70))
+    Sort_Code = Column(Integer())
+    City_RTE = Column(Integer())
+    
+    class Admin(EntityAdmin):
+        verbose_name = 'VC12345'
+        verbose_name_plural = 'VC12345'
+        
+        list_display = [
+        'Address',
+        'Sort_Code',
+        'City_RTE'
+        ]
+        
+class VPO_Box (Entity):
+    __tablename__ = "vpo_boxes"
     
     Number = Column(Unicode(9))
     City_Code = Column(Unicode(3))
@@ -237,8 +309,8 @@ class PO_Box (Entity):
     Tag = Column(Boolean())
     
     class Admin(EntityAdmin):
-        verbose_name = 'P.O. Box'
-        verbose_name_plural = 'P.O. Boxes'
+        verbose_name = 'Vidalia P.O. Box'
+        verbose_name_plural = 'Vidalia P.O. Boxes'
         
         list_display = [
         'Number',
@@ -248,8 +320,30 @@ class PO_Box (Entity):
         'Tag',
         ]
         
-class Subscription (Entity):
-    __tablename__ = "subscriptions"
+class LPO_Box (Entity):
+    __tablename__ = "lpo_boxes"
+    
+    Number = Column(Unicode(9))
+    City_Code = Column(Unicode(3))
+    Select_Code = Column(Unicode(2))
+    Label_Stop = Column(Boolean())
+    Walk_Sequence = Column(Integer())
+    Tag = Column(Boolean())
+    
+    class Admin(EntityAdmin):
+        verbose_name = 'Lyons P.O. Box'
+        verbose_name_plural = 'Lyons P.O. Boxes'
+        
+        list_display = [
+        'Number',
+        'City_Code',
+        'Select_Code',
+        'Walk_Sequence',
+        'Tag',
+        ]
+        
+class Vidalia (Entity):
+    __tablename__ = "vidalia"
     
     id = Column(Integer(), primary_key=True)
     
@@ -283,7 +377,8 @@ class Subscription (Entity):
     
     
     class Admin(EntityAdmin):
-        verbose_name = 'Subscription'
+        verbose_name = 'Vidalia'
+        verbose_name_plural = 'Vidalia'
         
         list_display = [
         'First_Name', 
@@ -308,7 +403,6 @@ class Subscription (Entity):
         
         # Actions for a single record - renewal notices.
         form_actions = [
-        RenewalNotice(),
         RenewSixMonths(),
         RenewTwelveMonths(),
         ]
@@ -317,6 +411,232 @@ class Subscription (Entity):
         list_actions = [
         AddressLabels(),
         AddressList(),
+        RenewalNotice(),
+        ]
+    
+    def __Unicode__ (self):
+        return self.Address
+        
+class Lyons (Entity):
+    __tablename__ = "lyons"
+    
+    id = Column(Integer(), primary_key=True)
+    
+    First_Name = Column(Unicode(35))
+    Last_Name = Column(Unicode(35))
+    Address = Column(Unicode(70))
+    # PO_Box either stores Line 2 of the address (apt #, etc) or specifies that it's a PO Box, with the number in Rural_Box.
+    PO_Box = Column(Unicode(30))
+    Rural_Box = Column(Unicode(30))
+    City = Column(Unicode(35), default=u'LYONS')
+    # Remember, these are unicode objects. Can't set the default to 'GA'.
+    State = Column(Unicode(4), default = u'GA')
+    ZIP = Column(Unicode(9))  
+    
+    Phone = Column(Unicode(20))
+    Email = Column(Unicode(35), nullable=True)
+    
+    Start_Date = Column(Date(), default = datetime.datetime.today(), nullable=True)
+    # Default value of the start date + 365.24 days. ("years=1" is not valid, leads to bugs on leap days.)
+    End_Date = Column(Date(), default = (datetime.datetime.today() + datetime.timedelta(days=365.24)), nullable=True)
+    
+    Sort_Code = Column(Integer())
+    Walk_Sequence = Column(Integer())
+    City_Code = Column(Unicode(5))
+    Zone = Column(Unicode(5))
+    Level = Column(Unicode(5))
+    
+    Advance = Column(Boolean(), default=True)
+    Clipper = Column(Boolean(), default=False)
+    
+    
+    
+    class Admin(EntityAdmin):
+        verbose_name = 'Lyons'
+        verbose_name_plural = 'Lyons'
+        
+        list_display = [
+        'First_Name', 
+        'Last_Name', 
+        'Address', 
+        'PO_Box',
+        'Rural_Box',
+        'City',
+        'State',
+        'ZIP', 
+        'Phone', 
+        'Email',  
+        'Start_Date',
+        'End_Date', 
+        'Sort_Code',
+        'Walk_Sequence', 
+        'City_Code',
+        'Zone',
+        'Level'
+        ]
+        force_columns_width = [20, 20, 40, 10, 10, 15, 5, 10, 15, 15, 20, 20, 10, 10, 10, 10, 10]
+        
+        # Actions for a single record - renewal notices.
+        form_actions = [
+        RenewSixMonths(),
+        RenewTwelveMonths(),
+        ]
+        
+        # Actions encompassing the whole table or a selection of it - address labels, address lists.
+        list_actions = [
+        AddressLabels(),
+        AddressList(),
+        RenewalNotice()
+        ]
+    
+    def __Unicode__ (self):
+        return self.Address
+        
+class Out304 (Entity):
+    __tablename__ = "out304"
+    
+    id = Column(Integer(), primary_key=True)
+    
+    First_Name = Column(Unicode(35))
+    Last_Name = Column(Unicode(35))
+    Address = Column(Unicode(70))
+    # PO_Box either stores Line 2 of the address (apt #, etc) or specifies that it's a PO Box, with the number in Rural_Box.
+    PO_Box = Column(Unicode(30))
+    Rural_Box = Column(Unicode(30))
+    City = Column(Unicode(35), default=u'VIDALIA')
+    # Remember, these are unicode objects. Can't set the default to 'GA'.
+    State = Column(Unicode(4), default = u'GA')
+    ZIP = Column(Unicode(9))  
+    
+    Phone = Column(Unicode(20))
+    Email = Column(Unicode(35), nullable=True)
+    
+    Start_Date = Column(Date(), default = datetime.datetime.today(), nullable=True)
+    # Default value of the start date + 365.24 days. ("years=1" is not valid, leads to bugs on leap days.)
+    End_Date = Column(Date(), default = (datetime.datetime.today() + datetime.timedelta(days=365.24)), nullable=True)
+    
+    Sort_Code = Column(Integer())
+    Walk_Sequence = Column(Integer())
+    City_Code = Column(Unicode(5))
+    Zone = Column(Unicode(5))
+    Level = Column(Unicode(5))
+    
+    Advance = Column(Boolean(), default=True)
+    Clipper = Column(Boolean(), default=False)
+    
+    
+    
+    class Admin(EntityAdmin):
+        verbose_name = 'Out304'
+        verbose_name_plural = 'Out304'
+        
+        list_display = [
+        'First_Name', 
+        'Last_Name', 
+        'Address', 
+        'PO_Box',
+        'Rural_Box',
+        'City',
+        'State',
+        'ZIP', 
+        'Phone', 
+        'Email',  
+        'Start_Date',
+        'End_Date', 
+        'Sort_Code',
+        'Walk_Sequence', 
+        'City_Code',
+        'Zone',
+        'Level'
+        ]
+        force_columns_width = [20, 20, 40, 10, 10, 15, 5, 10, 15, 15, 20, 20, 10, 10, 10, 10, 10]
+        
+        # Actions for a single record - renewal notices.
+        form_actions = [
+        RenewSixMonths(),
+        RenewTwelveMonths(),
+        ]
+        
+        # Actions encompassing the whole table or a selection of it - address labels, address lists.
+        list_actions = [
+        AddressLabels(),
+        AddressList(),
+        RenewalNotice()
+        ]
+    
+    def __Unicode__ (self):
+        return self.Address
+        
+class Outco (Entity):
+    __tablename__ = "outco"
+    
+    id = Column(Integer(), primary_key=True)
+    
+    First_Name = Column(Unicode(35))
+    Last_Name = Column(Unicode(35))
+    Address = Column(Unicode(70))
+    # PO_Box either stores Line 2 of the address (apt #, etc) or specifies that it's a PO Box, with the number in Rural_Box.
+    PO_Box = Column(Unicode(30))
+    Rural_Box = Column(Unicode(30))
+    City = Column(Unicode(35), default=u'LYONS')
+    # Remember, these are unicode objects. Can't set the default to 'GA'.
+    State = Column(Unicode(4), default = u'GA')
+    ZIP = Column(Unicode(9))  
+    
+    Phone = Column(Unicode(20))
+    Email = Column(Unicode(35), nullable=True)
+    
+    Start_Date = Column(Date(), default = datetime.datetime.today(), nullable=True)
+    # Default value of the start date + 365.24 days. ("years=1" is not valid, leads to bugs on leap days.)
+    End_Date = Column(Date(), default = (datetime.datetime.today() + datetime.timedelta(days=365.24)), nullable=True)
+    
+    Sort_Code = Column(Integer())
+    Walk_Sequence = Column(Integer())
+    City_Code = Column(Unicode(5))
+    Zone = Column(Unicode(5))
+    Level = Column(Unicode(5))
+    
+    Advance = Column(Boolean(), default=True)
+    Clipper = Column(Boolean(), default=False)
+    
+    
+    
+    class Admin(EntityAdmin):
+        verbose_name = 'Outco'
+        verbose_name_plural = 'Outco'
+        
+        list_display = [
+        'First_Name', 
+        'Last_Name', 
+        'Address', 
+        'PO_Box',
+        'Rural_Box',
+        'City',
+        'State',
+        'ZIP', 
+        'Phone', 
+        'Email',  
+        'Start_Date',
+        'End_Date', 
+        'Sort_Code',
+        'Walk_Sequence', 
+        'City_Code',
+        'Zone',
+        'Level'
+        ]
+        force_columns_width = [20, 20, 40, 10, 10, 15, 5, 10, 15, 15, 20, 20, 10, 10, 10, 10, 10]
+        
+        # Actions for a single record - renewal notices.
+        form_actions = [
+        RenewSixMonths(),
+        RenewTwelveMonths(),
+        ]
+        
+        # Actions encompassing the whole table or a selection of it - address labels, address lists.
+        list_actions = [
+        AddressLabelsOutco(),
+        AddressList(),
+        RenewalNotice()
         ]
     
     def __Unicode__ (self):

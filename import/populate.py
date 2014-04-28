@@ -21,8 +21,8 @@ def mk_int(s):
     return int(s) if s else 0
 
 """Takes a CSV table, starts the primary keys at n, and populates the database from it."""
-def populate_starting_at(table, n=1):
-        with open(table, 'rb') as f:
+def populate_starting_at(data, table, n=1):
+        with open(data, 'rb') as f:
             plotlist = csv.reader(f, delimiter=',')
             plotlist.next()
             plotlist.next()
@@ -72,10 +72,12 @@ def populate_starting_at(table, n=1):
                     record = (id, first, last, address, po_box, rural_box, city, state, zip, start_date, end_date, phone, email, sort_code, walk_sequence, city_code, zone, level, advance, clipper)
                     
                     print record
-                    c.execute("INSERT INTO subscriptions (id, First_Name, Last_Name, Address, PO_Box, Rural_Box, City, State, ZIP, Start_Date, End_Date, Phone, Email, Sort_Code, Walk_Sequence, City_Code, Zone, Level, Advance, Clipper) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", record)
+                    sql = "INSERT INTO %s (id, First_Name, Last_Name, Address, PO_Box, Rural_Box, City, State, ZIP, Start_Date, End_Date, Phone, Email, Sort_Code, Walk_Sequence, City_Code, Zone, Level, Advance, Clipper) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)" % table
+                    c.execute(sql, record)
+                   
                     
-def populate_po_starting_at(table, n=1):
-    with open(table, 'rb') as f:
+def populate_po_starting_at(data, table, n=1):
+    with open(data, 'rb') as f:
             plotlist = csv.reader(f, delimiter=',')
             plotlist.next()
             plotlist.next()
@@ -91,10 +93,11 @@ def populate_po_starting_at(table, n=1):
                     
                     record = (id, number, city, label_stop, select, walk, tag)
                     print record
-                    c.execute("INSERT INTO po_boxes (id, Number, City_Code, Label_Stop, Select_Code, Walk_Sequence, Tag) VALUES (?, ?, ?, ?, ?, ?, ?)", record)
+                    sql = "INSERT INTO %s (id, Number, City_Code, Label_Stop, Select_Code, Walk_Sequence, Tag) VALUES (?, ?, ?, ?, ?, ?, ?)" % table
+                    c.execute(sql, record)
 
-def populate_sop_starting_at(table, n=1):
-    with open(table, 'rb') as f:
+def populate_sop_starting_at(data, table, n=1):
+    with open(data, 'rb') as f:
             plotlist = csv.reader(f, delimiter=',')
             plotlist.next()
             plotlist.next()
@@ -107,7 +110,8 @@ def populate_sop_starting_at(table, n=1):
                     
                     record = (id, address, sort, city)
                     print record
-                    c.execute("INSERT INTO soperton_vc12345 (id, Address, Sort_Code, City_RTE) VALUES (?, ?, ?, ?)", record)
+                    sql = "INSERT INTO %s (id, Address, Sort_Code, City_RTE) VALUES (?, ?, ?, ?)" % table
+                    c.execute(sql, record)
                     
 def populate_lc12_starting_at(table, n=1):
     with open(table, 'rb') as f:
@@ -126,16 +130,16 @@ def populate_lc12_starting_at(table, n=1):
                     c.execute("INSERT INTO lc12 (id, Address, Walk_Sequence, City_Code) VALUES (?, ?, ?, ?)", record)                    
                     
 # Each n value is the number of entries already in the database + 1.
-populate_starting_at('Vidalia.csv', 1)
-populate_starting_at('Lyons.csv', 1777)
-populate_starting_at('Out304.csv', 2282)
-populate_starting_at('Outco.csv', 2625)
+populate_starting_at('Vidalia.csv', 'vidalia', 1)
+populate_starting_at('Lyons.csv', 'lyons', 1777)
+populate_starting_at('Out304.csv', 'out304', 2282)
+populate_starting_at('Outco.csv', 'outco', 2625)
 
-populate_po_starting_at('LPOBoxes.csv', 1)
-populate_po_starting_at('VPOBoxes.csv', 1000)
+populate_po_starting_at('LPOBoxes.csv', 'lpo_boxes', 1)
+populate_po_starting_at('VPOBoxes.csv', 'vpo_boxes', 1000)
 
-populate_sop_starting_at('Soperton.csv', 1)
-populate_sop_starting_at('VC12345.csv', 1600)
+populate_sop_starting_at('Soperton.csv', "soperton", 1)
+populate_sop_starting_at('VC12345.csv', "vc12345", 1600)
 
 populate_lc12_starting_at('LC12.csv', 1)
                     
