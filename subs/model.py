@@ -19,7 +19,7 @@ import os
 import jinja2
 
 from camelot.view.model_thread import get_model_thread
-from camelot.view.action_steps.orm import FlushSession
+from camelot.view.action_steps.orm import FlushSession, DeleteObject
 from camelot.view.action_steps.print_preview import PrintHtml, PrintJinjaTemplate, PrintPreview
 from PyQt4.QtWebKit import QWebPage, QWebView
 from PyQt4.QtCore import QUrl, QFile, QObject
@@ -48,8 +48,16 @@ class RenderJinjaHtml(PrintPreview):
         self.document.setHtml(self.html, baseUrl)
         super(RenderJinjaHtml, self).gui_run(gui_context)
        
-# Eventually I'd like to collapse SixMonths and TwelveMonths into one class that takes a "t" arg.
-
+        
+class DeleteSubscription(Action):
+    verbose_name = _('Delete Subscription')
+    icon = Icon('tango/16x16/places/user-trash.png')
+    tooltip = verbose_name
+    
+    def model_run(self, model_context):
+        sub = model_context.get_object()
+        yield DeleteObject(sub)
+    
 class RenewSixMonths(Action):
     verbose_name = _('Renew 6 Months')
     icon = Icon('tango/16x16/actions-document-print-preview.png')
@@ -298,7 +306,24 @@ class VC12345 (Entity):
         'City_RTE'
         ]
         
-class VPO_Box (Entity):
+class PO_Box(Entity):
+    Number = Column(Unicode(9))
+    City_Code = Column(Unicode(3))
+    Select_Code = Column(Unicode(2))
+    Label_Stop = Column(Boolean())
+    Walk_Sequence = Column(Integer())
+    Tag = Column(Boolean())
+    
+    class Admin(EntityAdmin):
+        list_display = [
+        'Number',
+        'City_Code',
+        'Select_Code',
+        'Walk_Sequence',
+        'Tag',
+        ]
+        
+"""class VPO_Box (Entity):
     __tablename__ = "vpo_boxes"
     
     Number = Column(Unicode(9))
@@ -341,7 +366,78 @@ class LPO_Box (Entity):
         'Walk_Sequence',
         'Tag',
         ]
+"""
+
+class Location (Entity):
+    __tablename__ = 'locations'
+    id = Column(Integer(), primary_key=True)
+    
+    First_Name = Column(Unicode(35))
+    Last_Name = Column(Unicode(35))
+    Address = Column(Unicode(70))
+    # PO_Box either stores Line 2 of the address (apt #, etc) or specifies that it's a PO Box, with the number in Rural_Box.
+    PO_Box = Column(Unicode(30))
+    Rural_Box = Column(Unicode(30))
+    City = Column(Unicode(35), default=u'VIDALIA')
+    # Remember, these are unicode objects. Can't set the default to 'GA'.
+    State = Column(Unicode(4), default = u'GA')
+    ZIP = Column(Unicode(9))  
+    
+    Phone = Column(Unicode(20))
+    Email = Column(Unicode(35), nullable=True)
+    
+    Start_Date = Column(Date(), default = datetime.datetime.today(), nullable=True)
+    # Default value of the start date + 365.24 days. ("years=1" is not valid, leads to bugs on leap days.)
+    End_Date = Column(Date(), default = (datetime.datetime.today() + datetime.timedelta(days=365.24)), nullable=True)
+    
+    Sort_Code = Column(Integer())
+    Walk_Sequence = Column(Integer())
+    City_Code = Column(Unicode(5))
+    Zone = Column(Unicode(5))
+    Level = Column(Unicode(5))
+    
+    Advance = Column(Boolean(), default=True)
+    Clipper = Column(Boolean(), default=False)
         
+    class Admin(EntityAdmin):
+        list_display = [
+        'First_Name', 
+        'Last_Name', 
+        'Address', 
+        'PO_Box',
+        'Rural_Box',
+        'City',
+        'State',
+        'ZIP', 
+        'Phone', 
+        'Email',  
+        'Start_Date',
+        'End_Date', 
+        'Sort_Code',
+        'Walk_Sequence', 
+        'City_Code',
+        'Zone',
+        'Level'
+        ]
+        force_columns_width = [20, 20, 40, 10, 10, 15, 5, 10, 15, 15, 20, 20, 10, 10, 10, 10, 10]
+        
+        # Actions for a single record.
+        form_actions = [
+        RenewSixMonths(),
+        RenewTwelveMonths(),
+        DeleteSubscription(),
+        ]
+        
+        # Actions encompassing the whole table or a selection of it.
+        list_actions = [
+        AddressLabels(),
+        AddressList(),
+        RenewalNotice(),
+        ]
+    
+    def __Unicode__ (self):
+        return self.Address
+"""
 class Vidalia (Entity):
     __tablename__ = "vidalia"
     
@@ -568,6 +664,7 @@ class Out304 (Entity):
         return self.Address
         
 class Outco (Entity):
+
     __tablename__ = "outco"
     
     id = Column(Integer(), primary_key=True)
@@ -641,3 +738,40 @@ class Outco (Entity):
     
     def __Unicode__ (self):
         return self.Address
+"""
+
+# I'd love to just make all of the locations just instances of the Location class and so forth,
+# but they need to be Classes themselves in order to be imported into the app admin.
+# Luckily there's only a little bit of copy&pasting going on.
+
+class Vidalia (Location):
+    verbose_name = 'Vidalia'
+    verbose_name_plural = verbose_name
+    __tablename__ = verbose_name.lower()
+    
+class Lyons (location):
+    verbose_name = 'Lyons'
+    verbose_name_plural = verbose_name
+    __tablename__ = verbose_name.lower()
+    
+class Out304 (Location):
+    verbose_name = 'Out304'
+    verbose_name_plural = verbose_name
+    __tablename__ = verbose_name.lower()
+   
+class Outco (Location):
+    # TODO: Outco has a different label printer than the others, don't forget to override it!
+    verbose_name = 'Vidalia'
+    verbose_name_plural = verbose_name
+    __tablename__ = verbose_name.lower()
+    
+
+class VPO_Box (PO_Box):
+    verbose_name = 'VPO_Box'
+    verbose_name_plural = "VPO_Boxes"
+    __tablename__ = verbose_name.lower()
+    
+class LPO_Box (PO_Box):
+    verbose_name = 'LPO_Box'
+    verbose_name_plural = "LPO_Boxes"
+    __tablename__ = verbose_name.lower()
