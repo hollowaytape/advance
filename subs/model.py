@@ -196,7 +196,7 @@ class AddressLabels(ListContextAction):
             count += 1
         
         # The count is displayed in the final label of the printout. So, add it to the list.
-        addresses.append(('Count:', '', '', count, '', '', ''))
+        addresses.append(('Count:', '', '', count, '', ''))
         
         # Each row contains 3 addresses.
         rows = list(chunks(addresses, 3))
@@ -223,7 +223,12 @@ class AddressLabelsOutco(ListContextAction):
         iterator = model_context.get_selection()
         addresses = []
         count = 0
+        
+        # In OutCO, we want to count the number of addresses in each zone.
         zone_counts = {}
+        # There are zones from 0 to 8.
+        for n in range(0, 9):
+            zone_counts[n] = 0
         
         for a in iterator:
             line_1 = "%s %s" % (a.First_Name, a.Last_Name)
@@ -234,11 +239,14 @@ class AddressLabelsOutco(ListContextAction):
             right_2 = a.id
             right_3 = "%s   %s" % (a.City_Code, a.Walk_Sequence)
             addresses.append((line_1, line_2, line_3, right_1, right_2, right_3))
-            zone_counts[a.Zone] += 1
+            # Convert the Zone to an integer
+            zone_counts[int(a.Zone)] += 1
             count += 1
         
         # The count is displayed in the final label of the printout. So, add it to the list.
-        addresses.append(('Count:', '', '', count, '', '', ''))
+        addresses.append(('Count:', '', '', count, '', ''))
+        for key, value in zone_counts:
+            addresses.append(('Zone %s' % key, '', '', value, '', ''))
         
         # Each row contains 3 addresses.
         rows = list(chunks(addresses, 3))
@@ -270,6 +278,10 @@ class LC12 (Entity):
         'Address',
         'Walk_Sequence',
         'City_Code'
+        ]
+        
+        form_actions = [
+        DeleteSubscription(),
         ]
         
 class Soperton (Entity):
@@ -306,7 +318,11 @@ class VC12345 (Entity):
         'City_RTE'
         ]
         
-class PO_Box(Entity):
+        form_actions = [
+        'DeleteSubscription',
+        ]
+        
+"""class PO_Box(Entity):
     Number = Column(Unicode(9))
     City_Code = Column(Unicode(3))
     Select_Code = Column(Unicode(2))
@@ -323,7 +339,9 @@ class PO_Box(Entity):
         'Tag',
         ]
         
-"""class VPO_Box (Entity):
+"""
+
+class VPO_Box (Entity):
     __tablename__ = "vpo_boxes"
     
     Number = Column(Unicode(9))
@@ -343,6 +361,10 @@ class PO_Box(Entity):
         'Select_Code',
         'Walk_Sequence',
         'Tag',
+        ]
+        
+        form_actions = [
+        'DeleteSubscription',
         ]
         
 class LPO_Box (Entity):
@@ -366,8 +388,12 @@ class LPO_Box (Entity):
         'Walk_Sequence',
         'Tag',
         ]
-"""
+        
+        form_actions = [
+        DeleteSubscription(),
+        ]
 
+"""
 class Location (Entity):
     __tablename__ = 'locations'
     id = Column(Integer(), primary_key=True)
@@ -501,6 +527,7 @@ class Vidalia (Entity):
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
+        DeleteSubscription()
         ]
         
         # Actions encompassing the whole table or a selection of it - address labels, address lists.
@@ -576,6 +603,7 @@ class Lyons (Entity):
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
+        DeleteSubscription(),
         ]
         
         # Actions encompassing the whole table or a selection of it - address labels, address lists.
@@ -651,6 +679,7 @@ class Out304 (Entity):
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
+        DeleteSubscription(),
         ]
         
         # Actions encompassing the whole table or a selection of it - address labels, address lists.
@@ -727,6 +756,7 @@ class Outco (Entity):
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
+        DeleteSubscription(),
         ]
         
         # Actions encompassing the whole table or a selection of it - address labels, address lists.
@@ -775,3 +805,5 @@ class LPO_Box (PO_Box):
     verbose_name = 'LPO_Box'
     verbose_name_plural = "LPO_Boxes"
     __tablename__ = verbose_name.lower()
+    
+"""
