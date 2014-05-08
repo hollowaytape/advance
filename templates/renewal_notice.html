@@ -8,11 +8,23 @@
             }
         body {
             font-family: Helvetica;
+            float: none;
             }
-        detachable {
-            margin: 0in .1875in;
+        div.page {
+            position: relative;
+            page-break-after: always;
+            page-break-inside: avoid;
+            
+            display:block;
+            float:none;
             }
-        .return_window {
+        div.detach {
+            margin: 0in .1875in 0.448in;
+            height: 3.875in; /* 4.323in */
+            position: relative;
+            border: 1px dotted;
+            }
+        div.return_window {
             width: 3.125in;
             height: 1.0in;
             
@@ -27,133 +39,77 @@
             float: left;
             overflow: hidden;
             }
-        .address_window {
+        div.address_window {
             width: 3.625in;
             height: .8in;
             
             margin-left: .3125in; /* Mac Margin .25 + .3125 = .5625in */
             margin-top: .175in; /* Mac Margin .25 +.1875 page margin + .6 return_window margin_top + 1 return_window height + X = 2.2125 */
             
-            /* padding: .125in .3in 0; */
             margin-right: .125in;
             
             float: left;
             overflow: hidden;
             }
-        letter {
-            margin-left: auto;
-            margin-right: auto;
-            width: 70%;
-            }
-        .page-break  {
-            clear: left;
-            display:block;
-            page-break-before:always;
-            }
         </style>
 </head>
 <body>
-{% for a in notices %}
-<table class="detach">
+{% for page in pages %}
+<div class="page">
+{% for address in page %}
+<div class="detach">
+    <table>
     <tr>
         <td><div class="return_window"><img src="advance_head.png"></img><br />
         PO Box 669 - 205 East First St - TOOMBS COUNTY - VIDALIA, GA 30475<br />
-        Phone 912-293-3131 - FAX 912-437-4899 - Email: theadvance@bellsouth.net</td></div>
+        Phone 912-293-3131 - FAX 912-437-4899 - Email: theadvance@bellsouth.net</div></td>
  
         <td><h2 style="font-family:Arial Bold; align: center; margin: .5in;"><div style="outline: 1px dotted; padding; 10px;">Renewal Notice</div></h2></td>
     </tr>
     <tr>
         <td><div class="address_window">
         <pre>
-        {{ a.name }}
-        {{ a.address }}
-        {{ a.city }}, {{ a.state }} {{ a.zip }}
+        {{ address.name }}
+        {{ address.address }}
+        {{ address.city }}, {{ address.state }} {{ address.zip }}
         </pre>
+        </div></td>
         
         <td>
             <table>
             <tr>
                 <td><b>File Name:</b></td>
-                <td><pre>{{ a.file_code }}</pre></td>
+                <td><pre>{{ address.file_code }}</pre></td>
             </tr>
             <tr>
                 <td><b>Record Number:</b></td>
-                <td><pre>{{ a.record_number }}</pre></td>
+                <td><pre>{{ address.record_number }}</pre></td>
             </tr>
             <tr>
                 <td><b>Expiration Date:</b></td>
-                <td><pre>{{ a.expiration_date }}</pre></td>
+                <td><pre>{{ address.expiration_date }}</pre></td>
             </tr>
             <tr>
                 <td><b>Amount Due:</b></td>
-                <td><pre>${{ a.price_twelve }} 12 months</pre></td>
+                <td><pre>${{ address.price_twelve }} 12 months</pre></td>
             </tr>
             <tr>
                 <td></td>
-                <td><pre>${{ a.price_six }} 6 months</pre></td>
+                <td><pre>${{ address.price_six }} 6 months</pre></td>
             </tr>
             </table>
+        </td>
+    </tr>
+    <tr>
+        <td colspan="2">
+            <hr>
+            <p style="text-align:center; font-weight:bold; font-size:14px;">PLEASE MAIL PAYMENTS TO: ADVANCE, PO BOX 669 VIDALIA, GA 30475 OR CALL 912.537.3131 FOR CREDIT CARD PAYMENTS</p>
+        </td>
     </tr>
 </table>
-<br />
-<hr>
-<br />
-<div class="letter">
-<h2><strong>RENEWAL NOTICE</strong></h2>
-<p>Dear Valued Subscriber,
-<p>Your subscription to The Advance will become due on the expiration date indicated below. We welcome your renewal. If you like what you read in our newspaper, tell a friend. We also have Gift Subscriptions available. Call 537-3131 for more information.
-
-<p><table>
-            <tr>
-                <td class="firstColumn"><b>File Name:</b></td>
-                <td class="secondColumn"><pre>{{ a.file_code }}</pre></td>
-            </tr>
-            <tr>
-                <td class="firstColumn"><b>Record Number:</b></td>
-                <td class="secondColumn"><pre>{{ a.record_number }}</pre></td>
-            </tr>
-            <tr>
-                <td class="firstColumn"><b>Expiration Date:</b></td>
-                <td class="secondColumn"><pre>{{ a.expiration_date }}</pre></td>
-            </tr>
-            <tr>
-                <td class="firstColumn"><b>Amount Due:</b></td>
-                <td class="secondColumn"><pre>${{ a.price_twelve }} 12 months</pre></td>
-            </tr>
-            <tr>
-                <td class="firstColumn"></td>
-                <td class="secondColumn"><pre>${{ a.price_six }} 6 months</pre></td>
-            </tr>
-            </table>
-
-<p>Make check payable to The Advance and return mail to:
-
-<pre>
-The Advance
-PO Box 669
-Vidalia, GA 30475</pre>
-
-<p><strong>SUBSCRIPTION RATES:</strong></p>
-<table width="75%">
-    <tr>
-        <th>In 304 Zip Code</th>
-        <th>Out of 304 Zip Code</th>
-    </tr>
-    <tr>
-        <td>Six Months - $19.50</td>
-        <td>Six Months - $27.50</td>
-    </tr>
-    <tr>
-        <td>One Year - $30.00</td>
-        <td>One Year - $45.00</td>
-    </tr>
-</table>
-<br />
-<hr>
-<br />
-<p style="text-align:center; font-size:12px"><strong>RETAIN THIS BOTTOM PORTION FOR YOUR RECORDS</strong></p>
 </div>
-<div class="page-break"></div>
+{% endfor %}
+</div>
 {% endfor %}
 </body>
 </html>

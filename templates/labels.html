@@ -4,43 +4,41 @@
     <meta charset="utf-8">
     <title>HTML & CSS Avery Labels (5160) by MM at Boulder Information Services</title>
     <style>
+    @page {
+            size 8.5in 11in;
+            }
     body {
         width: 8.5in;
         margin: 0in .1875in;
         padding-top: .5in;
         padding-bottom: .5in;
         }
-    .label{
+    .label {
         /* Avery 5160 labels -- CSS and HTML by MM at Boulder Information Services */
+        position: relative;
         width: 2.625in; /* plus .6 inches from padding */
         height: 1.0in; /* plus .125 inches from padding */
         padding: .125in .3in 0;
         margin-right: .125in; /* the gutter */
-
-        float: left;
-        
+        float: none;
         overflow: hidden;
-
         outline: 1px dotted; /* outline doesn't occupy space like border does */
-        
-        font-size: 14px;
+        font-size: 12px;
         }
     .left {
         text-align:left;
+        width:50%;
         }
     .right {
         text-align:right;
-        }
-    .page-break  {
-        clear: left;
-        display:block;
-        page-break-after:always;
+        width:30%;
         }
     </style>
 
 </head>
 <body>
 {% for page in pages %}
+    <div style="position: relative; height: 11in; page-break-after: always;">
     <table>
     {% for row in page %}
         <tr>
@@ -49,16 +47,16 @@
                 <div class="label">
                     <table>
                         <tr>
-                            <td class="left"><pre>{{ address[0] }}</pre></td>
-                            <td class="right"><pre>{{ address[3] }}</pre></td>
+                            <td class="left">{{ address[0] }}</td>
+                            <td class="right">{{ address[3] }}</td>
                         </tr>
                         <tr>
-                            <td class="left"><pre>{{ address[1] }}</pre></td>
-                            <td class="right"><pre>{{ address[4] }}</pre></td>
+                            <td class="left">{{ address[1] }}</td>
+                            <td class="right">{{ address[4] }}</td>
                         </tr>
                         <tr>
-                            <td class="left"><pre>{{ address[2] }}</pre></td>
-                            <td class="right"><pre>{{ address[5] }}</pre></td>
+                            <td class="left">{{ address[2] }}</td>
+                            <td class="right">{{ address[5] }}</td>
                         </tr>
                     </table>
                 </div>
@@ -66,7 +64,8 @@
         {% endfor %}
         </tr>
     {% endfor %}
-    <div class="page-break"></div>
+    </table>
+    </div>
 {% endfor %}
 </body>
 </html>

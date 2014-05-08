@@ -10,7 +10,7 @@ from sqlalchemy import Unicode, Date, Boolean, Integer
 import datetime
 
 from camelot.admin.action import Action, ActionStep
-from camelot.admin.action.list_action import ListContextAction
+from camelot.admin.action.list_action import ListContextAction, DeleteSelection
 from camelot.core.utils import ugettext_lazy as _
 from camelot.core.conf import settings
 from camelot.view.art import Icon
@@ -48,9 +48,8 @@ class RenderJinjaHtml(PrintPreview):
         self.document.setHtml(self.html, baseUrl)
         super(RenderJinjaHtml, self).gui_run(gui_context)
        
-        
-class DeleteSubscription(Action):
-    verbose_name = _('Delete Subscription')
+class DeleteSubscriptions(DeleteSelection):
+    verbose_name = _('Delete Subscriptions')
     icon = Icon('tango/16x16/places/user-trash.png')
     tooltip = verbose_name
     
@@ -119,21 +118,22 @@ class RenewalNotice(Action):
         
         # Eventually I'll want to pull these prices from an editable table instead of hard-coding them.
             if context['file_code'] == 'OUTCO':
-                context['price_six'] = "27.50"
-                context['price_twelve'] = "45.00"
+                context['price_six'] = "32.50"
+                context['price_twelve'] = "50.00"
             else:
-                context['price_six'] = "19.50"
-                context['price_twelve'] = "30.00"
+                context['price_six'] = "24.50"
+                context['price_twelve'] = "35.00"
             addresses.append(context)
             
-        pages = {'notices': addresses}
+        pages = list(chunks(addresses, 3))
+        context = {'pages': pages}
             
         jinja_environment = jinja2.Environment(autoescape=True,
                                                loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
                                                'templates')))
                                                
         yield RenderJinjaHtml(template = 'renewal_notice.html',
-                              context = pages,
+                              context = context,
                               environment = jinja_environment)
         
 class AddressList(ListContextAction):
@@ -185,7 +185,8 @@ class AddressLabels(ListContextAction):
         count = 0
         
         for a in iterator:
-            line_1 = "%s %s" % (a.First_Name, a.Last_Name)
+            # Last Names sometimes have "           SR" appened onto them which breaks the labels. Split them.
+            line_1 = "%s %s" % (a.First_Name, " ".join(a.Last_Name.split()))
             line_2 = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
             line_3 = "%s, %s %s" % (a.City, a.State, a.ZIP)
             
@@ -244,9 +245,11 @@ class AddressLabelsOutco(ListContextAction):
             count += 1
         
         # The count is displayed in the final label of the printout. So, add it to the list.
-        addresses.append(('Count:', '', '', count, '', ''))
-        for key, value in zone_counts:
-            addresses.append(('Zone %s' % key, '', '', value, '', ''))
+        addresses.append(('Count: %s' % count, 'Zone 0: %s' % zone_counts[0], 'Zone 1: %s' % zone_counts[1], 
+                          'Zone 2: %s' % zone_counts[2], 'Zone 3: %s' % zone_counts[3], 'Zone 4: %s' % zone_counts[4]))
+        
+        addresses.append(('Zone 5: %s' % zone_counts[5], 'Zone 6: %s' % zone_counts[6], 'Zone 7: %s' % zone_counts[7], 
+                          'Zone 8: %s' % zone_counts[8], '', ''))
         
         # Each row contains 3 addresses.
         rows = list(chunks(addresses, 3))
@@ -280,8 +283,8 @@ class LC12 (Entity):
         'City_Code'
         ]
         
-        form_actions = [
-        DeleteSubscription(),
+        list_actions = [
+        DeleteSubscriptions(),
         ]
         
 class Soperton (Entity):
@@ -301,6 +304,10 @@ class Soperton (Entity):
         'City_RTE'
         ]
         
+        list_actions = [
+        DeleteSubscriptions(),
+        ]
+        
 class VC12345 (Entity):
     __tablename__ = "vc12345"
     
@@ -318,8 +325,8 @@ class VC12345 (Entity):
         'City_RTE'
         ]
         
-        form_actions = [
-        'DeleteSubscription',
+        list_actions = [
+        DeleteSubscriptions(),
         ]
         
 """class PO_Box(Entity):
@@ -363,8 +370,8 @@ class VPO_Box (Entity):
         'Tag',
         ]
         
-        form_actions = [
-        'DeleteSubscription',
+        list_actions = [
+        DeleteSubscriptions(),
         ]
         
 class LPO_Box (Entity):
@@ -389,8 +396,8 @@ class LPO_Box (Entity):
         'Tag',
         ]
         
-        form_actions = [
-        DeleteSubscription(),
+        list_actions = [
+        DeleteSubscriptions(),
         ]
 
 """
@@ -523,18 +530,18 @@ class Vidalia (Entity):
         ]
         force_columns_width = [20, 20, 40, 10, 10, 15, 5, 10, 15, 15, 20, 20, 10, 10, 10, 10, 10]
         
-        # Actions for a single record - renewal notices.
+        # Actions for a single record - renewal actions.
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
-        DeleteSubscription()
         ]
         
-        # Actions encompassing the whole table or a selection of it - address labels, address lists.
+        # Actions encompassing the whole table or a selection of it - address labels, address lists, notices.
         list_actions = [
         AddressLabels(),
         AddressList(),
         RenewalNotice(),
+        DeleteSubscriptions()
         ]
     
     def __Unicode__ (self):
@@ -599,18 +606,18 @@ class Lyons (Entity):
         ]
         force_columns_width = [20, 20, 40, 10, 10, 15, 5, 10, 15, 15, 20, 20, 10, 10, 10, 10, 10]
         
-        # Actions for a single record - renewal notices.
+        # Actions for a single record - renewal actions.
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
-        DeleteSubscription(),
         ]
         
-        # Actions encompassing the whole table or a selection of it - address labels, address lists.
+        # Actions encompassing the whole table or a selection of it - address labels, address lists, notices.
         list_actions = [
         AddressLabels(),
         AddressList(),
-        RenewalNotice()
+        RenewalNotice(),
+        DeleteSubscriptions()
         ]
     
     def __Unicode__ (self):
@@ -679,14 +686,14 @@ class Out304 (Entity):
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
-        DeleteSubscription(),
         ]
         
-        # Actions encompassing the whole table or a selection of it - address labels, address lists.
+        # Actions encompassing the whole table or a selection of it - address labels, address lists, notices.
         list_actions = [
         AddressLabels(),
         AddressList(),
-        RenewalNotice()
+        RenewalNotice(),
+        DeleteSubscriptions()
         ]
     
     def __Unicode__ (self):
@@ -756,14 +763,14 @@ class Outco (Entity):
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
-        DeleteSubscription(),
         ]
         
         # Actions encompassing the whole table or a selection of it - address labels, address lists.
         list_actions = [
         AddressLabelsOutco(),
         AddressList(),
-        RenewalNotice()
+        RenewalNotice(),
+        DeleteSubscriptions()
         ]
     
     def __Unicode__ (self):
