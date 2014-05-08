@@ -48,7 +48,19 @@ class RenderJinjaHtml(PrintPreview):
         self.document.setHtml(self.html, baseUrl)
         super(RenderJinjaHtml, self).gui_run(gui_context)
        
-class DeleteSubscriptions(DeleteSelection):
+class DeleteSubscription(Action):
+    verbose_name = ('Delete Subscription')
+    icon = Icon('tango/16x16/places/user_trash.png')
+    tooltip = verbose_name
+    
+    def model_run(self, model_context):
+        obj = model_context.get_object()
+        admin  = model_context.admin
+        
+        yield DeleteObject(obj)
+        admin.expunge(obj)
+       
+class DeleteSubscriptionList(DeleteSelection):
     verbose_name = _('Delete Subscriptions')
     icon = Icon('tango/16x16/places/user-trash.png')
     tooltip = verbose_name
@@ -79,10 +91,10 @@ class RenewTwelveMonths(Action):
         sub.End_Date += datetime.timedelta(days=renewal_days)
         yield FlushSession( model_context.session )
 
-class RenewalNotice(Action):
-    verbose_name = _('Print Renewal Notice')
+class RenewalNotice(ListContextAction):
+    verbose_name = _('Print Renewal Notices')
     icon = Icon('tango/16x16/actions/document-print-preview.png')
-    tooltip = _('Print Renewal Notice')
+    tooltip = _('Print Renewal Notices')
     
     def model_run(self, model_context):
         iterator = model_context.get_selection()
@@ -172,7 +184,6 @@ class AddressList(ListContextAction):
                               context = context,
                               environment = jinja_environment)
         
-
 class AddressLabels(ListContextAction):
     """Print a sheet of address labels from the selected records."""
     verbose_name= _('Print Address Labels')
@@ -284,7 +295,11 @@ class LC12 (Entity):
         ]
         
         list_actions = [
-        DeleteSubscriptions(),
+        DeleteSubscriptionList(),
+        ]
+        
+        form_actions = [
+        DeleteSubscription(),
         ]
         
 class Soperton (Entity):
@@ -305,7 +320,11 @@ class Soperton (Entity):
         ]
         
         list_actions = [
-        DeleteSubscriptions(),
+        DeleteSubscriptionList(),
+        ]
+        
+        form_actions = [
+        DeleteSubscription(),
         ]
         
 class VC12345 (Entity):
@@ -326,7 +345,11 @@ class VC12345 (Entity):
         ]
         
         list_actions = [
-        DeleteSubscriptions(),
+        DeleteSubscriptionList(),
+        ]
+        
+        form_actions = [
+        DeleteSubscription(),
         ]
         
 """class PO_Box(Entity):
@@ -371,7 +394,11 @@ class VPO_Box (Entity):
         ]
         
         list_actions = [
-        DeleteSubscriptions(),
+        DeleteSubscriptionList(),
+        ]
+        
+        form_actions = [
+        DeleteSubscription(),
         ]
         
 class LPO_Box (Entity):
@@ -397,7 +424,11 @@ class LPO_Box (Entity):
         ]
         
         list_actions = [
-        DeleteSubscriptions(),
+        DeleteSubscriptionList(),
+        ]
+        
+        form_actions = [
+        DeleteSubscription(),
         ]
 
 """
@@ -534,6 +565,7 @@ class Vidalia (Entity):
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
+        DeleteSubscription(),
         ]
         
         # Actions encompassing the whole table or a selection of it - address labels, address lists, notices.
@@ -541,7 +573,7 @@ class Vidalia (Entity):
         AddressLabels(),
         AddressList(),
         RenewalNotice(),
-        DeleteSubscriptions()
+        DeleteSubscriptionList()
         ]
     
     def __Unicode__ (self):
@@ -610,6 +642,7 @@ class Lyons (Entity):
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
+        DeleteSubscription(),
         ]
         
         # Actions encompassing the whole table or a selection of it - address labels, address lists, notices.
@@ -617,7 +650,7 @@ class Lyons (Entity):
         AddressLabels(),
         AddressList(),
         RenewalNotice(),
-        DeleteSubscriptions()
+        DeleteSubscriptionList(),
         ]
     
     def __Unicode__ (self):
@@ -686,6 +719,7 @@ class Out304 (Entity):
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
+        DeleteSubscription(),
         ]
         
         # Actions encompassing the whole table or a selection of it - address labels, address lists, notices.
@@ -693,7 +727,7 @@ class Out304 (Entity):
         AddressLabels(),
         AddressList(),
         RenewalNotice(),
-        DeleteSubscriptions()
+        DeleteSubscriptionList(),
         ]
     
     def __Unicode__ (self):
@@ -763,6 +797,7 @@ class Outco (Entity):
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
+        DeleteSubscription(),
         ]
         
         # Actions encompassing the whole table or a selection of it - address labels, address lists.
@@ -770,7 +805,7 @@ class Outco (Entity):
         AddressLabelsOutco(),
         AddressList(),
         RenewalNotice(),
-        DeleteSubscriptions()
+        DeleteSubscriptionList(),
         ]
     
     def __Unicode__ (self):
