@@ -17,8 +17,6 @@ class MyApplicationAdmin(ApplicationAdmin):
     domain = 'github.com/hollowaytape'
     
     def get_sections(self):
-        from camelot.model.memento import Memento
-        from camelot.model.i18n import Translation
         return (Section( _('Subscription'),
                           self,
                           # Icon(os.path.join(settings.CAMELOT_MEDIA_ROOT, 'images', 'onion22.png')),

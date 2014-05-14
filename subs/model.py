@@ -48,7 +48,7 @@ class RenderJinjaHtml(PrintPreview):
         self.document.setHtml(self.html, baseUrl)
         super(RenderJinjaHtml, self).gui_run(gui_context)
        
-class DeleteSubscription(Action):
+"""class DeleteSubscription(Action):
     verbose_name = ('Delete Subscription')
     icon = Icon('tango/16x16/places/user_trash.png')
     tooltip = verbose_name
@@ -59,16 +59,8 @@ class DeleteSubscription(Action):
         
         yield DeleteObject(obj)
         admin.expunge(obj)
-       
-class DeleteSubscriptionList(DeleteSelection):
-    verbose_name = _('Delete Subscriptions')
-    icon = Icon('tango/16x16/places/user-trash.png')
-    tooltip = verbose_name
-    
-    def model_run(self, model_context):
-        sub = model_context.get_object()
-        yield DeleteObject(sub)
-    
+"""
+
 class RenewSixMonths(Action):
     verbose_name = _('Renew 6 Months')
     icon = Icon('tango/16x16/actions-document-print-preview.png')
@@ -185,10 +177,10 @@ class AddressList(ListContextAction):
                               environment = jinja_environment)
         
 class AddressLabels(ListContextAction):
-    """Print a sheet of address labels from the selected records."""
-    verbose_name= _('Print Address Labels')
+    """Print a (laser) sheet of address labels from the selected records."""
+    verbose_name= _('Print Labels (Laser)')
     icon = Icon('tango/16x16/actions/document-print.png')
-    tooltip = _('Print Address Labels')
+    tooltip = _('Print Address Labels (Laser)')
 
     def model_run(self, model_context):
         iterator = model_context.get_selection()
@@ -225,11 +217,50 @@ class AddressLabels(ListContextAction):
                               context = context,
                               environment = jinja_environment)             
 
+class AddressLabelsDotMatrix(ListContextAction):
+    """Print a (laser) sheet of address labels from the selected records."""
+    verbose_name= _('Print Labels (Dot-Matrix)')
+    icon = Icon('tango/16x16/actions/document-print.png')
+    tooltip = _('Print Address Labels (Dot-Matrix)')
+
+    def model_run(self, model_context):
+        iterator = model_context.get_selection()
+        addresses = []
+        count = 0
+        
+        for a in iterator:
+            # Last Names sometimes have "           SR" appened onto them which breaks the labels. Split them.
+            line_1 = "%s %s" % (a.First_Name, " ".join(a.Last_Name.split()))
+            line_2 = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
+            line_3 = "%s, %s %s" % (a.City, a.State, a.ZIP)
+            
+            right_1 = a.End_Date
+            right_2 = a.id
+            right_3 = "%s   %s" % (a.City_Code, a.Walk_Sequence)
+            addresses.append((line_1, line_2, line_3, right_1, right_2, right_3))
+            count += 1
+        
+        # The count is displayed in the final label of the printout. So, add it to the list.
+        addresses.append(('Count:', '', '', count, '', ''))
+        
+        # Each page contains 11 labels.
+        pages = list(chunks(addresses, 11))
+        # The final result: a list (pages) of rows (labels).
+        context = {'pages': pages}    
+            
+        jinja_environment = jinja2.Environment(autoescape=True,
+                                               loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
+                                               'templates')))    
+
+        yield RenderJinjaHtml(template = 'labels_dotmatrix.html',
+                              context = context,
+                              environment = jinja_environment)                                        
+                              
 class AddressLabelsOutco(ListContextAction):
     """Print a sheet of address labels from the selected records, plus a zone count."""
-    verbose_name= _('Print Address Labels')
+    verbose_name= _('Print Labels (Laser)')
     icon = Icon('tango/16x16/actions/document-print.png')
-    tooltip = _('Print Address Labels')
+    tooltip = _('Print Address Labels (Laser)')
 
     def model_run(self, model_context):
         iterator = model_context.get_selection()
@@ -275,7 +306,57 @@ class AddressLabelsOutco(ListContextAction):
 
         yield RenderJinjaHtml(template = 'labels.html',
                               context = context,
-                              environment = jinja_environment)                                    
+                              environment = jinja_environment)             
+
+class AddressLabelsOutcoDotMatrix(ListContextAction):
+    """Print a sheet of address labels from the selected records, plus a zone count."""
+    verbose_name= _('Print Labels (Dot-Matrix)')
+    icon = Icon('tango/16x16/actions/document-print.png')
+    tooltip = _('Print Address Labels (Dot-Matrix)')
+
+    def model_run(self, model_context):
+        iterator = model_context.get_selection()
+        addresses = []
+        count = 0
+        
+        # In OutCO, we want to count the number of addresses in each zone.
+        zone_counts = {}
+        # There are zones from 0 to 8.
+        for n in range(0, 9):
+            zone_counts[n] = 0
+        
+        for a in iterator:
+            line_1 = "%s %s" % (a.First_Name, a.Last_Name)
+            line_2 = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
+            line_3 = "%s, %s %s" % (a.City, a.State, a.ZIP)
+            
+            right_1 = a.End_Date
+            right_2 = a.id
+            right_3 = "%s   %s" % (a.City_Code, a.Walk_Sequence)
+            addresses.append((line_1, line_2, line_3, right_1, right_2, right_3))
+            # Convert the Zone to an integer
+            zone_counts[int(a.Zone)] += 1
+            count += 1
+        
+        # The count is displayed in the final label of the printout. So, add it to the list.
+        addresses.append(('Count: %s' % count, 'Zone 0: %s' % zone_counts[0], 'Zone 1: %s' % zone_counts[1], 
+                          'Zone 2: %s' % zone_counts[2], 'Zone 3: %s' % zone_counts[3], 'Zone 4: %s' % zone_counts[4]))
+        
+        addresses.append(('Zone 5: %s' % zone_counts[5], 'Zone 6: %s' % zone_counts[6], 'Zone 7: %s' % zone_counts[7], 
+                          'Zone 8: %s' % zone_counts[8], '', ''))
+        
+        # Each page contains 10 rows, or 30 addresses.
+        pages = list(chunks(addresses, 11))
+        # The final result: a list (page) of lists (rows) of 3-tuples (addresses).
+        context = {'pages': pages}    
+            
+        jinja_environment = jinja2.Environment(autoescape=True,
+                                               loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
+                                               'templates')))    
+
+        yield RenderJinjaHtml(template = 'labels_dotmatrix.html',
+                              context = context,
+                              environment = jinja_environment)                                   
 
 class LC12 (Entity):
     __tablename__ = "lc12"
@@ -295,12 +376,9 @@ class LC12 (Entity):
         ]
         
         list_actions = [
-        DeleteSubscriptionList(),
+        DeleteSelection(),
         ]
         
-        form_actions = [
-        DeleteSubscription(),
-        ]
         
 class Soperton (Entity):
     __tablename__ = "soperton"
@@ -320,12 +398,9 @@ class Soperton (Entity):
         ]
         
         list_actions = [
-        DeleteSubscriptionList(),
+        DeleteSelection(),
         ]
         
-        form_actions = [
-        DeleteSubscription(),
-        ]
         
 class VC12345 (Entity):
     __tablename__ = "vc12345"
@@ -345,12 +420,9 @@ class VC12345 (Entity):
         ]
         
         list_actions = [
-        DeleteSubscriptionList(),
+        DeleteSelection(),
         ]
         
-        form_actions = [
-        DeleteSubscription(),
-        ]
         
 """class PO_Box(Entity):
     Number = Column(Unicode(9))
@@ -394,12 +466,9 @@ class VPO_Box (Entity):
         ]
         
         list_actions = [
-        DeleteSubscriptionList(),
+        DeleteSelection(),
         ]
         
-        form_actions = [
-        DeleteSubscription(),
-        ]
         
 class LPO_Box (Entity):
     __tablename__ = "lpo_boxes"
@@ -424,12 +493,9 @@ class LPO_Box (Entity):
         ]
         
         list_actions = [
-        DeleteSubscriptionList(),
+        DeleteSelection(),
         ]
         
-        form_actions = [
-        DeleteSubscription(),
-        ]
 
 """
 class Location (Entity):
@@ -489,7 +555,7 @@ class Location (Entity):
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
-        DeleteSubscription(),
+        DeleteSelection(),
         ]
         
         # Actions encompassing the whole table or a selection of it.
@@ -565,15 +631,15 @@ class Vidalia (Entity):
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
-        DeleteSubscription(),
         ]
         
         # Actions encompassing the whole table or a selection of it - address labels, address lists, notices.
         list_actions = [
         AddressLabels(),
+        AddressLabelsDotMatrix(),
         AddressList(),
         RenewalNotice(),
-        DeleteSubscriptionList()
+        DeleteSelection()
         ]
     
     def __Unicode__ (self):
@@ -642,15 +708,15 @@ class Lyons (Entity):
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
-        DeleteSubscription(),
         ]
         
         # Actions encompassing the whole table or a selection of it - address labels, address lists, notices.
         list_actions = [
         AddressLabels(),
+        AddressLabelsDotMatrix(),
         AddressList(),
         RenewalNotice(),
-        DeleteSubscriptionList(),
+        DeleteSelection(),
         ]
     
     def __Unicode__ (self):
@@ -719,15 +785,15 @@ class Out304 (Entity):
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
-        DeleteSubscription(),
         ]
         
         # Actions encompassing the whole table or a selection of it - address labels, address lists, notices.
         list_actions = [
         AddressLabels(),
+        AddressLabelsDotMatrix(),
         AddressList(),
         RenewalNotice(),
-        DeleteSubscriptionList(),
+        DeleteSelection(),
         ]
     
     def __Unicode__ (self):
@@ -797,15 +863,15 @@ class Outco (Entity):
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
-        DeleteSubscription(),
         ]
         
         # Actions encompassing the whole table or a selection of it - address labels, address lists.
         list_actions = [
         AddressLabelsOutco(),
+        AddressLabelsOutcoDotMatrix(),
         AddressList(),
         RenewalNotice(),
-        DeleteSubscriptionList(),
+        DeleteSelection(),
         ]
     
     def __Unicode__ (self):
