@@ -48,19 +48,6 @@ class RenderJinjaHtml(PrintPreview):
         self.document.setHtml(self.html, baseUrl)
         super(RenderJinjaHtml, self).gui_run(gui_context)
        
-"""class DeleteSubscription(Action):
-    verbose_name = ('Delete Subscription')
-    icon = Icon('tango/16x16/places/user_trash.png')
-    tooltip = verbose_name
-    
-    def model_run(self, model_context):
-        obj = model_context.get_object()
-        admin  = model_context.admin
-        
-        yield DeleteObject(obj)
-        admin.expunge(obj)
-"""
-
 class RenewSixMonths(Action):
     verbose_name = _('Renew 6 Months')
     icon = Icon('tango/16x16/actions-document-print-preview.png')
@@ -95,6 +82,7 @@ class RenewalNotice(ListContextAction):
         for a in iterator:
             context = {}
             context['record_number'] = a.id
+            
             context['name'] = "%s %s" % (a.First_Name, a.Last_Name)
             if a.PO_Box is None and a.Rural_Box is None:
                 context['address'] = a.Address
@@ -104,24 +92,17 @@ class RenewalNotice(ListContextAction):
                 context['address'] = "%s %s" % (a.PO_Box, a.Rural_Box)
             else:
                 context['address'] = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
+                
             context['city'] = a.City
             context['state'] = a.State
             context['zip'] = a.ZIP
             context['expiration_date'] = a.End_Date
-            # File Code determines the price, and is based on the ZIP code.
-            # 30475 & 30475 are Vidalia, 30436 is Lyons, 304** is Out304, else is OutCo.
-            if a.ZIP[0:2] == '304':
-                if a.ZIP[3:4] in ('74', '75'):
-                    context['file_code'] = 'VIDALIA'
-                elif a.ZIP[3:4] == '36':
-                    context['file_code'] = 'LYONS'
-                else:
-                    context['file_code'] = 'OUT304'
-            else:
-                context['file_code'] = 'OUTCO'
+            # TODO: Make sure __table__ is the right attribute to access!
+            context['file_code'] = a.__table__
+
         
         # Eventually I'll want to pull these prices from an editable table instead of hard-coding them.
-            if context['file_code'] == 'OUTCO':
+            if context['file_code'] == 'outco':
                 context['price_six'] = "32.50"
                 context['price_twelve'] = "50.00"
             else:
@@ -188,10 +169,21 @@ class AddressLabels(ListContextAction):
         count = 0
         
         for a in iterator:
-            # Last Names sometimes have "           SR" appened onto them which breaks the labels. Split them.
-            line_1 = "%s %s" % (a.First_Name, " ".join(a.Last_Name.split()))
+            if a.First_Name and a.Last_Name:
+                # Last Names sometimes have "           SR" appened onto them which breaks the labels. Split them.
+                line_1 = "%s %s" % (a.First_Name, " ".join(a.Last_Name.split()))
+            else:
+                line_1 = "POSTAL PATRON"
             line_2 = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
-            line_3 = "%s, %s %s" % (a.City, a.State, a.ZIP)
+            
+            if a.__table__ == "vpo_box":
+                line_3 = "VIDALIA, GA"                                # Don't have the ZIP code for this yet.
+            if a.__table__ == "lpo_box":
+                line_3 = "LYONS, GA 30436"
+            if a.__table__ == "soperton":
+                line_3 = "SOPERTON, GA 30457"
+            else:
+                line_3 = "%s, %s %s" % (a.City, a.State, a.ZIP)
             
             right_1 = a.End_Date
             right_2 = a.id
@@ -377,6 +369,8 @@ class LC12 (Entity):
         
         list_actions = [
         DeleteSelection(),
+        AddressLabels(),
+        AddressLabelsDotMatrix(),
         ]
         
         
@@ -399,6 +393,8 @@ class Soperton (Entity):
         
         list_actions = [
         DeleteSelection(),
+        AddressLabels(),
+        AddressLabelsDotMatrix(),
         ]
         
         
@@ -421,27 +417,10 @@ class VC12345 (Entity):
         
         list_actions = [
         DeleteSelection(),
+        AddressLabels(),
+        AddressLabelsDotMatrix(),
         ]
         
-        
-"""class PO_Box(Entity):
-    Number = Column(Unicode(9))
-    City_Code = Column(Unicode(3))
-    Select_Code = Column(Unicode(2))
-    Label_Stop = Column(Boolean())
-    Walk_Sequence = Column(Integer())
-    Tag = Column(Boolean())
-    
-    class Admin(EntityAdmin):
-        list_display = [
-        'Number',
-        'City_Code',
-        'Select_Code',
-        'Walk_Sequence',
-        'Tag',
-        ]
-        
-"""
 
 class VPO_Box (Entity):
     __tablename__ = "vpo_boxes"
@@ -467,6 +446,8 @@ class VPO_Box (Entity):
         
         list_actions = [
         DeleteSelection(),
+        AddressLabels(),
+        AddressLabelsDotMatrix(),
         ]
         
         
@@ -494,80 +475,11 @@ class LPO_Box (Entity):
         
         list_actions = [
         DeleteSelection(),
+        AddressLabels(),
+        AddressLabelsDotMatrix(),
         ]
         
 
-"""
-class Location (Entity):
-    __tablename__ = 'locations'
-    id = Column(Integer(), primary_key=True)
-    
-    First_Name = Column(Unicode(35))
-    Last_Name = Column(Unicode(35))
-    Address = Column(Unicode(70))
-    # PO_Box either stores Line 2 of the address (apt #, etc) or specifies that it's a PO Box, with the number in Rural_Box.
-    PO_Box = Column(Unicode(30))
-    Rural_Box = Column(Unicode(30))
-    City = Column(Unicode(35), default=u'VIDALIA')
-    # Remember, these are unicode objects. Can't set the default to 'GA'.
-    State = Column(Unicode(4), default = u'GA')
-    ZIP = Column(Unicode(9))  
-    
-    Phone = Column(Unicode(20))
-    Email = Column(Unicode(35), nullable=True)
-    
-    Start_Date = Column(Date(), default = datetime.datetime.today(), nullable=True)
-    # Default value of the start date + 365.24 days. ("years=1" is not valid, leads to bugs on leap days.)
-    End_Date = Column(Date(), default = (datetime.datetime.today() + datetime.timedelta(days=365.24)), nullable=True)
-    
-    Sort_Code = Column(Integer())
-    Walk_Sequence = Column(Integer())
-    City_Code = Column(Unicode(5))
-    Zone = Column(Unicode(5))
-    Level = Column(Unicode(5))
-    
-    Advance = Column(Boolean(), default=True)
-    Clipper = Column(Boolean(), default=False)
-        
-    class Admin(EntityAdmin):
-        list_display = [
-        'First_Name', 
-        'Last_Name', 
-        'Address', 
-        'PO_Box',
-        'Rural_Box',
-        'City',
-        'State',
-        'ZIP', 
-        'Phone', 
-        'Email',  
-        'Start_Date',
-        'End_Date', 
-        'Sort_Code',
-        'Walk_Sequence', 
-        'City_Code',
-        'Zone',
-        'Level'
-        ]
-        force_columns_width = [20, 20, 40, 10, 10, 15, 5, 10, 15, 15, 20, 20, 10, 10, 10, 10, 10]
-        
-        # Actions for a single record.
-        form_actions = [
-        RenewSixMonths(),
-        RenewTwelveMonths(),
-        DeleteSelection(),
-        ]
-        
-        # Actions encompassing the whole table or a selection of it.
-        list_actions = [
-        AddressLabels(),
-        AddressList(),
-        RenewalNotice(),
-        ]
-    
-    def __Unicode__ (self):
-        return self.Address
-"""
 class Vidalia (Entity):
     __tablename__ = "vidalia"
     
