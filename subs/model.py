@@ -168,29 +168,40 @@ class AddressLabels(ListContextAction):
         addresses = []
         count = 0
         
+        # Check the table name through the selection's first entry, to minimize db queries and determine biz rules.
+        table = iterator[0].__table__
+        
+        if table == "outco":
+            # In OutCO, we want to count the number of addresses in each zone.
+            zone_counts = {}
+            # There are zones from 0 to 8.
+            for n in range(0, 9):
+                zone_counts[n] = 0
+        
         for a in iterator:
             if a.First_Name and a.Last_Name:
                 # Last Names sometimes have "           SR" appened onto them which breaks the labels. Split them.
                 line_1 = "%s %s" % (a.First_Name, " ".join(a.Last_Name.split()))
             else:
                 line_1 = "POSTAL PATRON"
+                
             line_2 = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
             
-            if a.__table__ == "vpo_boxes":
+            if table == "vpo_boxes":
                 if a.Tag == False:
                     continue
                 line_3 = "VIDALIA, GA 30475"
-            elif a.__table__ == "vc12345":
+            elif table == "vc12345":
                 line_3 = "VIDALIA, GA 30474"
                 
-            elif a.__table__ == "lpo_boxes":
+            elif table == "lpo_boxes":
                 if a.Tag == False:
                     continue
                 line_3 = "LYONS, GA 30436"
-            elif a.__table__ == "lc12":
+            elif table == "lc12":
                 line_3 = "LYONS, GA 30436"
                 
-            elif a.__table__ == "soperton":
+            elif table_ == "soperton":
                 line_3 = "SOPERTON, GA 30457"
                 
             else:
@@ -198,19 +209,29 @@ class AddressLabels(ListContextAction):
             
             right_1 = a.End_Date
             right_2 = a.id
-            right_3 = "%s   %s" % (a.City_Code, a.Walk_Sequence)
+            right_3 = "%s %s   %s" % (a.City_Code, a.City_RTE, a.Walk_Sequence)
             addresses.append((line_1, line_2, line_3, right_1, right_2, right_3))
             count += 1
+            
+            if table == "outco":
+                zone_counts[int(a.Zone)] += 1
         
         # The count is displayed in the final label of the printout. So, add it to the list.
-        addresses.append(('Count:', '', '', count, '', ''))
+        if table == "outco":
+            addresses.append(('Count: %s' % count, 'Zone 0: %s' % zone_counts[0], 'Zone 1: %s' % zone_counts[1], 
+                              'Zone 2: %s' % zone_counts[2], 'Zone 3: %s' % zone_counts[3], 'Zone 4: %s' % zone_counts[4]))
+        
+            addresses.append(('Zone 5: %s' % zone_counts[5], 'Zone 6: %s' % zone_counts[6], 'Zone 7: %s' % zone_counts[7], 
+                              'Zone 8: %s' % zone_counts[8], '', ''))                
+        else:
+            addresses.append(('Count:', '', '', count, '', ''))
         
         # Each row contains 3 addresses.
         rows = list(chunks(addresses, 3))
         # Each page contains 10 rows, or 30 addresses.
         pages = list(chunks(rows, 10))
         # The final result: a list (page) of lists (rows) of 3-tuples (addresses).
-        context = {'pages': pages}    
+        context = {'pages': pages}
             
         jinja_environment = jinja2.Environment(autoescape=True,
                                                loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
@@ -258,9 +279,9 @@ class AddressLabelsDotMatrix(ListContextAction):
         yield RenderJinjaHtml(template = 'labels_dotmatrix.html',
                               context = context,
                               environment = jinja_environment)                                        
-                              
+"""                              
 class AddressLabelsOutco(ListContextAction):
-    """Print a sheet of address labels from the selected records, plus a zone count."""
+    # Print a sheet of address labels from the selected records, plus a zone count.
     verbose_name= _('Print Labels (Laser)')
     icon = Icon('tango/16x16/actions/document-print.png')
     tooltip = _('Print Address Labels (Laser)')
@@ -312,7 +333,7 @@ class AddressLabelsOutco(ListContextAction):
                               environment = jinja_environment)             
 
 class AddressLabelsOutcoDotMatrix(ListContextAction):
-    """Print a sheet of address labels from the selected records, plus a zone count."""
+    # Print a sheet of address labels from the selected records, plus a zone count.
     verbose_name= _('Print Labels (Dot-Matrix)')
     icon = Icon('tango/16x16/actions/document-print.png')
     tooltip = _('Print Address Labels (Dot-Matrix)')
@@ -361,6 +382,7 @@ class AddressLabelsOutcoDotMatrix(ListContextAction):
                               context = context,
                               environment = jinja_environment)                                   
 
+"""
 class LC12 (Entity):
     __tablename__ = "lc12"
     
@@ -522,7 +544,6 @@ class Vidalia (Entity):
     
     Advance = Column(Boolean(), default=True)
     Clipper = Column(Boolean(), default=False)
-    
     
     
     class Admin(EntityAdmin):
@@ -734,7 +755,7 @@ class Outco (Entity):
     # PO_Box either stores Line 2 of the address (apt #, etc) or specifies that it's a PO Box, with the number in Rural_Box.
     PO_Box = Column(Unicode(30))
     Rural_Box = Column(Unicode(30))
-    City = Column(Unicode(35), default=u'LYONS')
+    City = Column(Unicode(35))
     # Remember, these are unicode objects. Can't set the default to 'GA'.
     State = Column(Unicode(4), default = u'GA')
     ZIP = Column(Unicode(9))  
@@ -790,8 +811,8 @@ class Outco (Entity):
         
         # Actions encompassing the whole table or a selection of it - address labels, address lists.
         list_actions = [
-        AddressLabelsOutco(),
-        AddressLabelsOutcoDotMatrix(),
+        AddressLabels(),
+        AddressLabelsDotMatrix(),
         AddressList(),
         RenewalNotice(),
         DeleteSelection(),
@@ -799,42 +820,3 @@ class Outco (Entity):
     
     def __Unicode__ (self):
         return self.Address
-"""
-
-# I'd love to just make all of the locations just instances of the Location class and so forth,
-# but they need to be Classes themselves in order to be imported into the app admin.
-# Luckily there's only a little bit of copy&pasting going on.
-
-class Vidalia (Location):
-    verbose_name = 'Vidalia'
-    verbose_name_plural = verbose_name
-    __tablename__ = verbose_name.lower()
-    
-class Lyons (location):
-    verbose_name = 'Lyons'
-    verbose_name_plural = verbose_name
-    __tablename__ = verbose_name.lower()
-    
-class Out304 (Location):
-    verbose_name = 'Out304'
-    verbose_name_plural = verbose_name
-    __tablename__ = verbose_name.lower()
-   
-class Outco (Location):
-    # TODO: Outco has a different label printer than the others, don't forget to override it!
-    verbose_name = 'Vidalia'
-    verbose_name_plural = verbose_name
-    __tablename__ = verbose_name.lower()
-    
-
-class VPO_Box (PO_Box):
-    verbose_name = 'VPO_Box'
-    verbose_name_plural = "VPO_Boxes"
-    __tablename__ = verbose_name.lower()
-    
-class LPO_Box (PO_Box):
-    verbose_name = 'LPO_Box'
-    verbose_name_plural = "LPO_Boxes"
-    __tablename__ = verbose_name.lower()
-    
-"""
