@@ -98,7 +98,7 @@ class RenewalNotice(ListContextAction):
             context['zip'] = a.ZIP
             context['expiration_date'] = a.End_Date
             # TODO: Make sure __table__ is the right attribute to access!
-            context['file_code'] = a.__table__
+            context['file_code'] = a.__table__.upper()
 
         
         # Eventually I'll want to pull these prices from an editable table instead of hard-coding them.
@@ -176,12 +176,23 @@ class AddressLabels(ListContextAction):
                 line_1 = "POSTAL PATRON"
             line_2 = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
             
-            if a.__table__ == "vpo_box":
-                line_3 = "VIDALIA, GA"                                # Don't have the ZIP code for this yet.
-            if a.__table__ == "lpo_box":
+            if a.__table__ == "vpo_boxes":
+                if a.Tag == False:
+                    continue
+                line_3 = "VIDALIA, GA 30475"
+            elif a.__table__ == "vc12345":
+                line_3 = "VIDALIA, GA 30474"
+                
+            elif a.__table__ == "lpo_boxes":
+                if a.Tag == False:
+                    continue
                 line_3 = "LYONS, GA 30436"
-            if a.__table__ == "soperton":
+            elif a.__table__ == "lc12":
+                line_3 = "LYONS, GA 30436"
+                
+            elif a.__table__ == "soperton":
                 line_3 = "SOPERTON, GA 30457"
+                
             else:
                 line_3 = "%s, %s %s" % (a.City, a.State, a.ZIP)
             
