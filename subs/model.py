@@ -26,7 +26,6 @@ from PyQt4.QtCore import QUrl, QFile, QObject
 
 def chunks(l, n):
     """ Yield successive n-sized chunks from l. Used to split address lists into page-sized chunks."""
-
     for i in xrange(0, len(l), n):
         yield l[i:i+n]
         
@@ -42,6 +41,8 @@ class RenderJinjaHtml(PrintPreview):
     
     def gui_run(self, gui_context):
         self.document = QWebView()
+        self.document = QWebView()
+        # Images do not render the first time. Maybe rendering it twice before returning it will solve this?
         super(RenderJinjaHtml, self).__init__(document=self.document)
         # Qt needs a baseUrl with a trailing slash, so we can't just use CAMELOT_MEDIA_ROOT.
         baseUrl = QUrl.fromLocalFile(os.path.join(settings.ROOT_DIR, "images/"))
@@ -110,8 +111,7 @@ class RenewalNotice(ListContextAction):
                 context['price_twelve'] = "35.00"
             addresses.append(context)
             
-        pages = list(chunks(addresses, 3))
-        context = {'pages': pages}
+        context = {'addresses' : addresses}
             
         jinja_environment = jinja2.Environment(autoescape=True,
                                                loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
@@ -820,3 +820,7 @@ class Outco (Entity):
     
     def __Unicode__ (self):
         return self.Address
+        
+class Parameter(Entity):
+    using_options(tablename='parameter')
+    date = Field(Date)
