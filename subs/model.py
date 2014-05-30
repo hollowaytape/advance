@@ -1,4 +1,5 @@
 from sqlalchemy.schema import Column
+
 import sqlalchemy.types
 
 from camelot.admin.entity_admin import EntityAdmin
@@ -17,12 +18,22 @@ from camelot.view.art import Icon
 
 import os
 import jinja2
+import datetime
+import calendar
 
 from camelot.view.model_thread import get_model_thread
 from camelot.view.action_steps.orm import FlushSession, DeleteObject
 from camelot.view.action_steps.print_preview import PrintHtml, PrintJinjaTemplate, PrintPreview
 from PyQt4.QtWebKit import QWebPage, QWebView
 from PyQt4.QtCore import QUrl, QFile, QObject
+
+from subs.date_filter import DateFilter
+from camelot.view.filters import ValidDateFilter, EditorFilter
+from sqlalchemy.sql.operators import between_op
+
+today = datetime.date.today()
+days_in_current_month = calendar.monthrange(today.year, today.month)[1]
+most_recent_sunday = today - datetime.timedelta(days=(today.weekday() + 1))
 
 def chunks(l, n):
     """ Yield successive n-sized chunks from l. Used to split address lists into page-sized chunks."""
@@ -99,7 +110,7 @@ class RenewalNotice(ListContextAction):
             context['zip'] = a.ZIP
             context['expiration_date'] = a.End_Date
             # TODO: Make sure __table__ is the right attribute to access!
-            context['file_code'] = a.__table__.upper()
+            context['file_code'] = a.__tablename__.upper()
 
         
         # Eventually I'll want to pull these prices from an editable table instead of hard-coding them.
@@ -169,7 +180,7 @@ class AddressLabels(ListContextAction):
         count = 0
         
         # Check the table name through the selection's first entry, to minimize db queries and determine biz rules.
-        table = iterator[0].__table__
+        table = iterator.next().__table__
         
         if table == "outco":
             # In OutCO, we want to count the number of addresses in each zone.
@@ -180,7 +191,7 @@ class AddressLabels(ListContextAction):
         
         for a in iterator:
             if a.First_Name and a.Last_Name:
-                # Last Names sometimes have "           SR" appened onto them which breaks the labels. Split them.
+                # Last Names sometimes have "           SR" appended onto them which breaks the labels. Split them.
                 line_1 = "%s %s" % (a.First_Name, " ".join(a.Last_Name.split()))
             else:
                 line_1 = "POSTAL PATRON"
@@ -201,7 +212,7 @@ class AddressLabels(ListContextAction):
             elif table == "lc12":
                 line_3 = "LYONS, GA 30436"
                 
-            elif table_ == "soperton":
+            elif table == "soperton":
                 line_3 = "SOPERTON, GA 30457"
                 
             else:
@@ -209,7 +220,13 @@ class AddressLabels(ListContextAction):
             
             right_1 = a.End_Date
             right_2 = a.id
-            right_3 = "%s %s   %s" % (a.City_Code, a.City_RTE, a.Walk_Sequence)
+            try:
+            # This case includes major files and PO Boxes.
+                right_3 = "%s    %s" % (a.City_Code, a.Walk_Sequence)
+            # LC12, VC12345, and Soperton have City RTE and Sort Code instead.
+            except AttributeError: 
+                right_3 = "%s    %S" % (a.City_RTE, a.Sort_Code)
+                
             addresses.append((line_1, line_2, line_3, right_1, right_2, right_3))
             count += 1
             
@@ -585,6 +602,12 @@ class Vidalia (Entity):
         RenewalNotice(),
         DeleteSelection()
         ]
+        
+        list_filter = [
+        #DateFilter('End_Date')
+        #ValidDateFilter(from_attribute='End_Date', thru_attribute="End_Date", verbose_name="Date Range"
+         EditorFilter(field_name="End_Date", default_operator=between_op, default_value_1=today.replace(day=1), 
+                      default_value_2=today.replace(day=days_in_current_month))]
     
     def __Unicode__ (self):
         return self.Address
@@ -821,6 +844,3 @@ class Outco (Entity):
     def __Unicode__ (self):
         return self.Address
         
-class Parameter(Entity):
-    using_options(tablename='parameter')
-    date = Field(Date)

@@ -27,9 +27,7 @@ class MySettings( SimpleSettings ):
         from camelot.core.sql import metadata
         from sqlalchemy.orm import configure_mappers
         metadata.bind = self.ENGINE()
-        import camelot.model.authentication
         import camelot.model.i18n
-        import camelot.model.memento
         import subs.model
         configure_mappers()
         metadata.create_all()
