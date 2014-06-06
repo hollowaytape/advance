@@ -1,5 +1,10 @@
-from sqlalchemy.schema import Column
+import os
+import jinja2
+import datetime
+import calendar
+import datetime
 
+from sqlalchemy.schema import Column
 import sqlalchemy.types
 
 from camelot.admin.entity_admin import EntityAdmin
@@ -8,18 +13,11 @@ import camelot.types
 
 from sqlalchemy import Unicode, Date, Boolean, Integer
 
-import datetime
-
 from camelot.admin.action import Action, ActionStep
 from camelot.admin.action.list_action import ListContextAction, DeleteSelection
 from camelot.core.utils import ugettext_lazy as _
 from camelot.core.conf import settings
 from camelot.view.art import Icon
-
-import os
-import jinja2
-import datetime
-import calendar
 
 from camelot.view.model_thread import get_model_thread
 from camelot.view.action_steps.orm import FlushSession, DeleteObject
@@ -27,13 +25,11 @@ from camelot.view.action_steps.print_preview import PrintHtml, PrintJinjaTemplat
 from PyQt4.QtWebKit import QWebPage, QWebView
 from PyQt4.QtCore import QUrl, QFile, QObject
 
-from subs.date_filter import DateFilter
-from camelot.view.filters import ValidDateFilter, EditorFilter
+from camelot.view.filters import EditorFilter
 from sqlalchemy.sql.operators import between_op
 
 today = datetime.date.today()
 days_in_current_month = calendar.monthrange(today.year, today.month)[1]
-most_recent_sunday = today - datetime.timedelta(days=(today.weekday() + 1))
 
 def chunks(l, n):
     """ Yield successive n-sized chunks from l. Used to split address lists into page-sized chunks."""
@@ -52,12 +48,17 @@ class RenderJinjaHtml(PrintPreview):
     
     def gui_run(self, gui_context):
         self.document = QWebView()
-        self.document = QWebView()
-        # Images do not render the first time. Maybe rendering it twice before returning it will solve this?
         super(RenderJinjaHtml, self).__init__(document=self.document)
         # Qt needs a baseUrl with a trailing slash, so we can't just use CAMELOT_MEDIA_ROOT.
         baseUrl = QUrl.fromLocalFile(os.path.join(settings.ROOT_DIR, "images/"))
         self.document.setHtml(self.html, baseUrl)
+        
+        # Images do not render the first time. Maybe rendering it twice before returning it will solve this?
+        del self.document
+        self.document = QWebView()
+        super(RenderJinjaHtml, self).__init__(document=self.document)
+        self.document.setHtml(self.html, baseUrl)
+        
         super(RenderJinjaHtml, self).gui_run(gui_context)
        
 class RenewSixMonths(Action):
@@ -88,7 +89,8 @@ class RenewalNotice(ListContextAction):
     tooltip = _('Print Renewal Notices')
     
     def model_run(self, model_context):
-        iterator = model_context.get_selection()
+        # iterator = model_context.get_selection()
+		iterator = model_context.SelectAll()
         addresses = []
         
         for a in iterator:
@@ -109,7 +111,6 @@ class RenewalNotice(ListContextAction):
             context['state'] = a.State
             context['zip'] = a.ZIP
             context['expiration_date'] = a.End_Date
-            # TODO: Make sure __table__ is the right attribute to access!
             context['file_code'] = a.__tablename__.upper()
 
         
@@ -179,8 +180,8 @@ class AddressLabels(ListContextAction):
         addresses = []
         count = 0
         
-        # Check the table name through the selection's first entry, to minimize db queries and determine biz rules.
-        table = iterator.next().__table__
+        # Check the table name through the iterator's first entry, to minimize db queries and determine biz rules.
+        table = iterator.next().__tablename__
         
         if table == "outco":
             # In OutCO, we want to count the number of addresses in each zone.
@@ -296,110 +297,8 @@ class AddressLabelsDotMatrix(ListContextAction):
         yield RenderJinjaHtml(template = 'labels_dotmatrix.html',
                               context = context,
                               environment = jinja_environment)                                        
-"""                              
-class AddressLabelsOutco(ListContextAction):
-    # Print a sheet of address labels from the selected records, plus a zone count.
-    verbose_name= _('Print Labels (Laser)')
-    icon = Icon('tango/16x16/actions/document-print.png')
-    tooltip = _('Print Address Labels (Laser)')
+                           
 
-    def model_run(self, model_context):
-        iterator = model_context.get_selection()
-        addresses = []
-        count = 0
-        
-        # In OutCO, we want to count the number of addresses in each zone.
-        zone_counts = {}
-        # There are zones from 0 to 8.
-        for n in range(0, 9):
-            zone_counts[n] = 0
-        
-        for a in iterator:
-            line_1 = "%s %s" % (a.First_Name, a.Last_Name)
-            line_2 = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
-            line_3 = "%s, %s %s" % (a.City, a.State, a.ZIP)
-            
-            right_1 = a.End_Date
-            right_2 = a.id
-            right_3 = "%s   %s" % (a.City_Code, a.Walk_Sequence)
-            addresses.append((line_1, line_2, line_3, right_1, right_2, right_3))
-            # Convert the Zone to an integer
-            zone_counts[int(a.Zone)] += 1
-            count += 1
-        
-        # The count is displayed in the final label of the printout. So, add it to the list.
-        addresses.append(('Count: %s' % count, 'Zone 0: %s' % zone_counts[0], 'Zone 1: %s' % zone_counts[1], 
-                          'Zone 2: %s' % zone_counts[2], 'Zone 3: %s' % zone_counts[3], 'Zone 4: %s' % zone_counts[4]))
-        
-        addresses.append(('Zone 5: %s' % zone_counts[5], 'Zone 6: %s' % zone_counts[6], 'Zone 7: %s' % zone_counts[7], 
-                          'Zone 8: %s' % zone_counts[8], '', ''))
-        
-        # Each row contains 3 addresses.
-        rows = list(chunks(addresses, 3))
-        # Each page contains 10 rows, or 30 addresses.
-        pages = list(chunks(rows, 10))
-        # The final result: a list (page) of lists (rows) of 3-tuples (addresses).
-        context = {'pages': pages}    
-            
-        jinja_environment = jinja2.Environment(autoescape=True,
-                                               loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
-                                               'templates')))    
-
-        yield RenderJinjaHtml(template = 'labels.html',
-                              context = context,
-                              environment = jinja_environment)             
-
-class AddressLabelsOutcoDotMatrix(ListContextAction):
-    # Print a sheet of address labels from the selected records, plus a zone count.
-    verbose_name= _('Print Labels (Dot-Matrix)')
-    icon = Icon('tango/16x16/actions/document-print.png')
-    tooltip = _('Print Address Labels (Dot-Matrix)')
-
-    def model_run(self, model_context):
-        iterator = model_context.get_selection()
-        addresses = []
-        count = 0
-        
-        # In OutCO, we want to count the number of addresses in each zone.
-        zone_counts = {}
-        # There are zones from 0 to 8.
-        for n in range(0, 9):
-            zone_counts[n] = 0
-        
-        for a in iterator:
-            line_1 = "%s %s" % (a.First_Name, a.Last_Name)
-            line_2 = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
-            line_3 = "%s, %s %s" % (a.City, a.State, a.ZIP)
-            
-            right_1 = a.End_Date
-            right_2 = a.id
-            right_3 = "%s   %s" % (a.City_Code, a.Walk_Sequence)
-            addresses.append((line_1, line_2, line_3, right_1, right_2, right_3))
-            # Convert the Zone to an integer
-            zone_counts[int(a.Zone)] += 1
-            count += 1
-        
-        # The count is displayed in the final label of the printout. So, add it to the list.
-        addresses.append(('Count: %s' % count, 'Zone 0: %s' % zone_counts[0], 'Zone 1: %s' % zone_counts[1], 
-                          'Zone 2: %s' % zone_counts[2], 'Zone 3: %s' % zone_counts[3], 'Zone 4: %s' % zone_counts[4]))
-        
-        addresses.append(('Zone 5: %s' % zone_counts[5], 'Zone 6: %s' % zone_counts[6], 'Zone 7: %s' % zone_counts[7], 
-                          'Zone 8: %s' % zone_counts[8], '', ''))
-        
-        # Each page contains 10 rows, or 30 addresses.
-        pages = list(chunks(addresses, 11))
-        # The final result: a list (page) of lists (rows) of 3-tuples (addresses).
-        context = {'pages': pages}    
-            
-        jinja_environment = jinja2.Environment(autoescape=True,
-                                               loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
-                                               'templates')))    
-
-        yield RenderJinjaHtml(template = 'labels_dotmatrix.html',
-                              context = context,
-                              environment = jinja_environment)                                   
-
-"""
 class LC12 (Entity):
     __tablename__ = "lc12"
     
@@ -603,11 +502,8 @@ class Vidalia (Entity):
         DeleteSelection()
         ]
         
-        list_filter = [
-        #DateFilter('End_Date')
-        #ValidDateFilter(from_attribute='End_Date', thru_attribute="End_Date", verbose_name="Date Range"
-         EditorFilter(field_name="End_Date", default_operator=between_op, default_value_1=today.replace(day=1), 
-                      default_value_2=today.replace(day=days_in_current_month))]
+        list_filter = [EditorFilter(field_name="End_Date", default_operator=between_op, default_value_1=today.replace(day=1), 
+                       default_value_2=today.replace(day=days_in_current_month))]
     
     def __Unicode__ (self):
         return self.Address
@@ -685,6 +581,9 @@ class Lyons (Entity):
         RenewalNotice(),
         DeleteSelection(),
         ]
+		
+		list_filter = [EditorFilter(field_name="End_Date", default_operator=between_op, default_value_1=today.replace(day=1), 
+                       default_value_2=today.replace(day=days_in_current_month))]
     
     def __Unicode__ (self):
         return self.Address
@@ -762,6 +661,9 @@ class Out304 (Entity):
         RenewalNotice(),
         DeleteSelection(),
         ]
+		
+		list_filter = [EditorFilter(field_name="End_Date", default_operator=between_op, default_value_1=today.replace(day=1), 
+                       default_value_2=today.replace(day=days_in_current_month))]
     
     def __Unicode__ (self):
         return self.Address
@@ -840,6 +742,9 @@ class Outco (Entity):
         RenewalNotice(),
         DeleteSelection(),
         ]
+		
+		list_filter = [EditorFilter(field_name="End_Date", default_operator=between_op, default_value_1=today.replace(day=1), 
+                       default_value_2=today.replace(day=days_in_current_month))]
     
     def __Unicode__ (self):
         return self.Address
