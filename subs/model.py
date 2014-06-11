@@ -83,14 +83,14 @@ class RenewTwelveMonths(Action):
         sub.End_Date += datetime.timedelta(days=renewal_days)
         yield FlushSession( model_context.session )
 
-class RenewalNotice(ListContextAction):
+class RenewalNotice(Action):
     verbose_name = _('Print Renewal Notices')
     icon = Icon('tango/16x16/actions/document-print-preview.png')
     tooltip = _('Print Renewal Notices')
     
     def model_run(self, model_context):
-        # iterator = model_context.get_selection()
-		iterator = model_context.SelectAll()
+        # iterator = model_context.get_selection() # Would allow the selection of certain groups. Client wants the whole table selected.
+        iterator = model_context.get_collection()
         addresses = []
         
         for a in iterator:
@@ -133,14 +133,14 @@ class RenewalNotice(ListContextAction):
                               context = context,
                               environment = jinja_environment)
         
-class AddressList(ListContextAction):
+class AddressList(Action):
     """Print a list of addresses from the selected records."""
     verbose_name = _('Print Address List')
     icon = Icon('tango/16x16/actions/format-justify-fill.png')
     tooltip = _('Print Address List')
 
     def model_run(self, model_context):
-        iterator = model_context.get_selection()
+        iterator = model_context.get_collection()
         addresses = []
         for a in iterator:
             # For each address, create a tuple of relevant fields to place in the context dict.
@@ -169,14 +169,14 @@ class AddressList(ListContextAction):
                               context = context,
                               environment = jinja_environment)
         
-class AddressLabels(ListContextAction):
+class AddressLabels(Action):
     """Print a (laser) sheet of address labels from the selected records."""
     verbose_name= _('Print Labels (Laser)')
     icon = Icon('tango/16x16/actions/document-print.png')
     tooltip = _('Print Address Labels (Laser)')
 
     def model_run(self, model_context):
-        iterator = model_context.get_selection()
+        iterator = model_context.get_collection()
         addresses = []
         count = 0
         
@@ -191,13 +191,19 @@ class AddressLabels(ListContextAction):
                 zone_counts[n] = 0
         
         for a in iterator:
-            if a.First_Name and a.Last_Name:
+            try:
                 # Last Names sometimes have "           SR" appended onto them which breaks the labels. Split them.
                 line_1 = "%s %s" % (a.First_Name, " ".join(a.Last_Name.split()))
-            else:
+            except AttributeError:
                 line_1 = "POSTAL PATRON"
                 
-            line_2 = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
+            try:
+                line_2 = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
+            except AttributeError:
+                try:
+                    line_2 = a.Address
+                except AttributeError:
+                    line_2 = "PO BOX %s" % a.Number
             
             if table == "vpo_boxes":
                 if a.Tag == False:
@@ -219,14 +225,19 @@ class AddressLabels(ListContextAction):
             else:
                 line_3 = "%s, %s %s" % (a.City, a.State, a.ZIP)
             
-            right_1 = a.End_Date
+            try:
+                right_1 = a.End_Date
+            except AttributeError:
+                right_1 = ""
+                
             right_2 = a.id
+            
             try:
             # This case includes major files and PO Boxes.
                 right_3 = "%s    %s" % (a.City_Code, a.Walk_Sequence)
             # LC12, VC12345, and Soperton have City RTE and Sort Code instead.
             except AttributeError: 
-                right_3 = "%s    %S" % (a.City_RTE, a.Sort_Code)
+                right_3 = "%s    %s" % (a.City_RTE, a.Sort_Code)
                 
             addresses.append((line_1, line_2, line_3, right_1, right_2, right_3))
             count += 1
@@ -259,14 +270,14 @@ class AddressLabels(ListContextAction):
                               context = context,
                               environment = jinja_environment)             
 
-class AddressLabelsDotMatrix(ListContextAction):
+class AddressLabelsDotMatrix(Action):
     """Print a (laser) sheet of address labels from the selected records."""
     verbose_name= _('Print Labels (Dot-Matrix)')
     icon = Icon('tango/16x16/actions/document-print.png')
     tooltip = _('Print Address Labels (Dot-Matrix)')
 
     def model_run(self, model_context):
-        iterator = model_context.get_selection()
+        iterator = model_context.get_collection()
         addresses = []
         count = 0
         
@@ -582,7 +593,7 @@ class Lyons (Entity):
         DeleteSelection(),
         ]
 		
-		list_filter = [EditorFilter(field_name="End_Date", default_operator=between_op, default_value_1=today.replace(day=1), 
+        list_filter = [EditorFilter(field_name="End_Date", default_operator=between_op, default_value_1=today.replace(day=1), 
                        default_value_2=today.replace(day=days_in_current_month))]
     
     def __Unicode__ (self):
@@ -662,7 +673,7 @@ class Out304 (Entity):
         DeleteSelection(),
         ]
 		
-		list_filter = [EditorFilter(field_name="End_Date", default_operator=between_op, default_value_1=today.replace(day=1), 
+        list_filter = [EditorFilter(field_name="End_Date", default_operator=between_op, default_value_1=today.replace(day=1), 
                        default_value_2=today.replace(day=days_in_current_month))]
     
     def __Unicode__ (self):
@@ -743,7 +754,7 @@ class Outco (Entity):
         DeleteSelection(),
         ]
 		
-		list_filter = [EditorFilter(field_name="End_Date", default_operator=between_op, default_value_1=today.replace(day=1), 
+        list_filter = [EditorFilter(field_name="End_Date", default_operator=between_op, default_value_1=today.replace(day=1), 
                        default_value_2=today.replace(day=days_in_current_month))]
     
     def __Unicode__ (self):

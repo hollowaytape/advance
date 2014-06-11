@@ -10,6 +10,13 @@
             font-family: Helvetica;
             float: none;
             }
+        table.page {
+            page-break-inside: avoid;
+            page-break-after: always;
+            }
+        tr {
+            page-break-inside: avoid;
+            }
         div.detach {
             margin: 0in 0in 0.448in; /* "Shift it half an inch to the left: .1875 removed left margin here */
             height: 3.5in; /* 4.323in */
@@ -41,7 +48,7 @@
             margin-right: .125in;
             
             float: left;
-            overflow: hidden;
+            overflow: visible;
             }
         </style>
 </head>
