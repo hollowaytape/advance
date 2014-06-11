@@ -10,14 +10,6 @@
             font-family: Helvetica;
             float: none;
             }
-        div.page {
-            position: relative;
-            page-break-after: always;
-            page-break-inside: avoid;
-            
-            display:block;
-            float:none;
-            }
         div.detach {
             margin: 0in 0in 0.448in; /* "Shift it half an inch to the left: .1875 removed left margin here */
             height: 3.5in; /* 4.323in */
@@ -54,9 +46,7 @@
         </style>
 </head>
 <body>
-{% for page in pages %}
-<div class="page">
-{% for address in page %}
+{% for address in addresses %}
 <div class="detach">
     <table>
     <tr>
@@ -105,8 +95,6 @@
         </td>
     </tr>
 </table>
-</div>
-{% endfor %}
 </div>
 {% endfor %}
 </body>

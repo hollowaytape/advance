@@ -7,7 +7,8 @@ import calendar
 class DateFilter(Filter):
 
     def render( self, filter_data, parent ):
-        return FilterWidget(filter_data, parent)
+        return DateFilterWidget(filter_data, parent)
+        # return FilterWidget(filter_data, parent)
 
     def get_filter_data(self, admin):
         from sqlalchemy.sql import and_
@@ -32,13 +33,12 @@ class DateFilter(Filter):
 
         today = datetime.date.today()
         tomorrow = today + datetime.timedelta(days=1)
-        days_in_current_month = calendar.monthrange(today.year, today.month)
+        days_in_current_month = calendar.monthrange(today.year, today.month)[1]
         most_recent_sunday = today - datetime.timedelta(days=(today.weekday() + 1))
 
         dates_range = (
             (_('Today'), today, tomorrow),
-            
-            (_('This week'), most_recent_sunday, (most_recent_sunday + datetime.timedelta(days=7)))
+            (_('This week'), most_recent_sunday, (most_recent_sunday + datetime.timedelta(days=7))),
             (_('This month'), today.replace(day=1), today.replace(day=days_in_current_month))
             )
 

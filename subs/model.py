@@ -52,12 +52,17 @@ class RenderJinjaHtml(PrintPreview):
     
     def gui_run(self, gui_context):
         self.document = QWebView()
-        self.document = QWebView()
-        # Images do not render the first time. Maybe rendering it twice before returning it will solve this?
         super(RenderJinjaHtml, self).__init__(document=self.document)
         # Qt needs a baseUrl with a trailing slash, so we can't just use CAMELOT_MEDIA_ROOT.
         baseUrl = QUrl.fromLocalFile(os.path.join(settings.ROOT_DIR, "images/"))
         self.document.setHtml(self.html, baseUrl)
+        
+        # Images do not render the first time. Maybe rendering it twice before returning it will solve this?
+        del self.document
+        self.document = QWebView()
+        super(RenderJinjaHtml, self).__init__(document=self.document)
+        self.document.setHtml(self.html, baseUrl)
+        
         super(RenderJinjaHtml, self).gui_run(gui_context)
        
 class RenewSixMonths(Action):
