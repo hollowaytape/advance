@@ -136,8 +136,8 @@ populate_sop_starting_at('import/VC12345.csv', "vc12345", 1600)
 populate_lc12_starting_at('import/LC12.csv', 1)
 
 # Price tables can be populated without reference to an external doc.
-c.execute ("INSERT INTO price (id, Type, Six_Months, Twelve_Months) VALUES (1, 'Inco', 24.50, 35.00)")
-c.execute ("INSERT INTO price (id, Type, Six_Months, Twelve_Months) VALUES (2, 'Outco', 32.50, 50.00)") 
+c.execute ("INSERT INTO price (id, Type, Six_Months, Twelve_Months) VALUES (?, ?, ?, ?)", (1, 'Inco', 24.50, 35.00))
+c.execute ("INSERT INTO price (id, Type, Six_Months, Twelve_Months) VALUES (?, ?, ?, ?)", (2, 'Outco', 32.50, 50.00))
 
 # Fix for a weird bitbucket Camelot glitch on Mac.
 # c.execute('''ALTER TABLE authentication_mechanism ADD COLUMN representation character varying;''')

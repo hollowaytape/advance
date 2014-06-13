@@ -31,8 +31,6 @@ from PyQt4 import QtGui
 from camelot.view.filters import EditorFilter
 from sqlalchemy.sql.operators import between_op
 
-from sqlalchemy.sql import select
-
 today = datetime.date.today()
 days_in_current_month = calendar.monthrange(today.year, today.month)[1]
 
@@ -40,27 +38,10 @@ def chunks(l, n):
     """ Yield successive n-sized chunks from l. Used to split address lists into page-sized chunks."""
     for i in xrange(0, len(l), n):
         yield l[i:i+n]
-        
-class RenderJinjaHtml(PrintPreview):
-    from camelot.core.templates import environment
-    def __init__(self,
-                 template, 
-                 context={},
-                 environment = environment):
-        self.template = environment.get_template(template)
-        self.html = self.template.render(context)
-        self.context = context
-    
-    def gui_run(self, gui_context):
-        self.document = QWebView()
-        super(RenderJinjaHtml, self).__init__(document=self.document)
-        baseUrl = QUrl.fromLocalFile(os.path.join(settings.ROOT_DIR, "images/"))
-        self.document.setHtml(self.html, baseUrl)
-        
-        super(RenderJinjaHtml, self).gui_run(gui_context)
+               
        
 class PrintHtmlWQ( PrintPreview ):    
-      
+    # Thanks to Gonzalo from the Camelot Google Group for this image-rendering fix.
     from camelot.core.templates import environment
     def __init__ (self, template, context={}, environment=environment):
         self.document = None
@@ -96,27 +77,10 @@ class PrintHtmlWQ( PrintPreview ):
         
     def render(self, gui_context):
         self.generateDocument()
-        # return super( PrintHtmlWQ, self ).render(gui_context)
-        
-        self.config_printer()
-        gui_context = gui_context.copy( DocumentActionGuiContext )
-        gui_context.document = self.document
-        dialog = PrintPreviewDialog( self.printer, 
-                                     gui_context, 
-                                     actions = [EditDocument()],
-                                     flags = QtCore.Qt.Window )
-        # show maximized seems to trigger a bug in qt which scrolls the page 
-        # down dialog.showMaximized()
-        resize_widget_to_screen( dialog )
-        return dialog
+        return super(PrintHtmlWQ, self).render(gui_context)
                 
     def loadFinished(self):
         self.finished = True
-        
-    def gui_run( self, gui_context ):
-        dialog = self.render(self, gui_context )
-        with hide_progress_dialog( gui_context ):
-            dialog.exec_()
        
 class RenewSixMonths(Action):
     verbose_name = _('Renew 6 Months')
@@ -148,17 +112,19 @@ class RenewalNotice(Action):
     def model_run(self, model_context):
         iterator = model_context.get_collection()
         addresses = []
-        conn = MySettings.ENGINE.connect()
+        
+        conn = model_context.session.begin()
+        
         if iterator.next().__tablename__ == "outco":
-            s = select([Price], whereclause=(Price.Type == "Outco"))
-            result = conn.execute(s) 
-            price_six = result.Six_Months
-            price_twelve = result.Twelve_Months
+            q = model_context.session.query(Price).filter(Price.Type == "Outco").first()
+            price_six = format(q.Six_Months, '.2f')
+            price_twelve = format(q.Twelve_Months, '.2f')
+            conn.commit()
         else:
-            s = select([Price], whereclause=(Price.Type == "Inco"))
-            result = conn.execute(s) 
-            price_six = result.Six_Months
-            price_twelve = result.Twelve_Months
+            q = model_context.session.query(Price).filter(Price.Type == "Inco").first()
+            price_six = format(q.Six_Months, '.2f')
+            price_twelve = format(q.Twelve_Months, '.2f')
+            conn.commit()
         
         for a in iterator:
             context = {}
