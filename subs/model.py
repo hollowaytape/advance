@@ -11,7 +11,7 @@ from camelot.admin.entity_admin import EntityAdmin
 from camelot.core.orm import Entity
 import camelot.types
 
-from sqlalchemy import Unicode, Date, Boolean, Integer
+from sqlalchemy import Unicode, Date, Boolean, Integer, Float
 
 from camelot.admin.action import Action, ActionStep
 from camelot.admin.action.list_action import ListContextAction, DeleteSelection
@@ -24,9 +24,12 @@ from camelot.view.action_steps.orm import FlushSession, DeleteObject
 from camelot.view.action_steps.print_preview import PrintHtml, PrintJinjaTemplate, PrintPreview
 from PyQt4.QtWebKit import QWebPage, QWebView
 from PyQt4.QtCore import QUrl, QFile, QObject
+from PyQt4 import QtGui
 
 from camelot.view.filters import EditorFilter
 from sqlalchemy.sql.operators import between_op
+
+from sqlalchemy.sql import select
 
 today = datetime.date.today()
 days_in_current_month = calendar.monthrange(today.year, today.month)[1]
@@ -49,17 +52,51 @@ class RenderJinjaHtml(PrintPreview):
     def gui_run(self, gui_context):
         self.document = QWebView()
         super(RenderJinjaHtml, self).__init__(document=self.document)
-        # Qt needs a baseUrl with a trailing slash, so we can't just use CAMELOT_MEDIA_ROOT.
         baseUrl = QUrl.fromLocalFile(os.path.join(settings.ROOT_DIR, "images/"))
         self.document.setHtml(self.html, baseUrl)
         
-        # Images do not render the first time. Maybe rendering it twice before returning it will solve this?
-        del self.document
-        self.document = QWebView()
-        super(RenderJinjaHtml, self).__init__(document=self.document)
-        self.document.setHtml(self.html, baseUrl)
-        
         super(RenderJinjaHtml, self).gui_run(gui_context)
+       
+class PrintHtmlWQ( PrintPreview ):    
+      
+    from camelot.core.templates import environment
+    def __init__ (self, template, context={}, environment=environment):
+        self.document = None
+        # self.html = html
+        self.printer = None
+        self.margin_left = None
+        self.margin_top = None
+        self.margin_right = None
+        self.margin_bottom = None
+        self.margin_unit = QtGui.QPrinter.Millimeter
+        self.page_size = None
+        self.page_orientation = None
+        
+        self.template = environment.get_template(template)
+        self.html = self.template.render(context)
+        self.context = context
+      
+    def generateDocument(self):       
+        from PyQt4.QtWebKit import QWebView, QWebSettings
+        if self.document:
+            return
+        self.document = QWebView()
+       
+        loop = QtCore.QEventLoop()        
+        self.finished = False
+        self.document.loadFinished.connect(self.loadFinished)
+        self.document.loadFinished.connect(loop.quit)
+        baseUrl = QUrl.fromLocalFile(os.path.join(settings.ROOT_DIR, "images/"))
+        self.document.setHtml(self.html, baseUrl)
+        if not self.finished:
+            loop.exec_()       
+        
+    def render(self, gui_context):
+        self.generateDocument()
+        return super(PrintHtmlWQ, self).render(gui_context )
+                
+    def loadFinished(self):
+        self.finished = True
        
 class RenewSixMonths(Action):
     verbose_name = _('Renew 6 Months')
@@ -89,9 +126,15 @@ class RenewalNotice(Action):
     tooltip = _('Print Renewal Notices')
     
     def model_run(self, model_context):
-        # iterator = model_context.get_selection() # Would allow the selection of certain groups. Client wants the whole table selected.
+        # iterator = model_context.get_selection() # Would allow the manual specification of subscriptions to print.
         iterator = model_context.get_collection()
         addresses = []
+        if iterator.next().__tablename__ == "outco":
+            price_six = select([Price.Six_Months], whereclause=(Price.Type == "Outco"))
+            price_twelve = select([Price.Twelve_Months], whereclause=(Price.Type == "Outco"))
+        else:
+            price_six = select([Price.Six_Months], whereclause=(Price.Type == "Inco"))
+            price_twelve = select([Price.Twelve_Months], whereclause=(Price.Type == "Inco"))
         
         for a in iterator:
             context = {}
@@ -114,13 +157,14 @@ class RenewalNotice(Action):
             context['file_code'] = a.__tablename__.upper()
 
         
-        # Eventually I'll want to pull these prices from an editable table instead of hard-coding them.
+            """# Eventually I'll want to pull these prices from an editable table instead of hard-coding them.
             if context['file_code'] == 'outco':
                 context['price_six'] = "32.50"
                 context['price_twelve'] = "50.00"
             else:
                 context['price_six'] = "24.50"
-                context['price_twelve'] = "35.00"
+                context['price_twelve'] = "35.00"""
+            context['price_six'], context['price_twelve'] = price_six, price_twelve
             addresses.append(context)
             
         context = {'addresses' : addresses}
@@ -129,7 +173,7 @@ class RenewalNotice(Action):
                                                loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
                                                'templates')))
                                                
-        yield RenderJinjaHtml(template = 'renewal_notice.html',
+        yield PrintHtmlWQ(template = 'renewal_notice.html',
                               context = context,
                               environment = jinja_environment)
         
@@ -389,7 +433,7 @@ class VPO_Box (Entity):
     City_Code = Column(Unicode(3))
     Select_Code = Column(Unicode(2))
     Label_Stop = Column(Boolean())
-    Walk_Sequence = Column(Integer())
+    Walk_Sequence = Column(Unicode(9))
     Tag = Column(Boolean())
     
     class Admin(EntityAdmin):
@@ -760,3 +804,21 @@ class Outco (Entity):
     def __Unicode__ (self):
         return self.Address
         
+class Price (Entity):
+    __tablename__ = "price"
+    
+    id = Column(Integer(), primary_key=True)
+    
+    Type = Column(Unicode(20))
+    Six_Months = Column(Float())
+    Twelve_Months = Column(Float())
+    
+    class Admin(EntityAdmin):
+        verbose_name = 'Price'
+        verbose_name_plural = 'Prices'
+        
+        list_display = [
+        'Type',
+        'Six_Months',
+        'Twelve_Months',
+        ]
