@@ -4,6 +4,8 @@ import datetime
 import calendar
 import datetime
 
+from main import MySettings
+
 from sqlalchemy.schema import Column
 import sqlalchemy.types
 
@@ -23,7 +25,7 @@ from camelot.view.model_thread import get_model_thread
 from camelot.view.action_steps.orm import FlushSession, DeleteObject
 from camelot.view.action_steps.print_preview import PrintHtml, PrintJinjaTemplate, PrintPreview
 from PyQt4.QtWebKit import QWebPage, QWebView
-from PyQt4.QtCore import QUrl, QFile, QObject
+from PyQt4.QtCore import QUrl, QFile, QObject, QEventLoop
 from PyQt4 import QtGui
 
 from camelot.view.filters import EditorFilter
@@ -82,7 +84,7 @@ class PrintHtmlWQ( PrintPreview ):
             return
         self.document = QWebView()
        
-        loop = QtCore.QEventLoop()        
+        loop = QEventLoop()        
         self.finished = False
         self.document.loadFinished.connect(self.loadFinished)
         self.document.loadFinished.connect(loop.quit)
@@ -91,12 +93,30 @@ class PrintHtmlWQ( PrintPreview ):
         if not self.finished:
             loop.exec_()       
         
+        
     def render(self, gui_context):
         self.generateDocument()
-        return super(PrintHtmlWQ, self).render(gui_context )
+        # return super( PrintHtmlWQ, self ).render(gui_context)
+        
+        self.config_printer()
+        gui_context = gui_context.copy( DocumentActionGuiContext )
+        gui_context.document = self.document
+        dialog = PrintPreviewDialog( self.printer, 
+                                     gui_context, 
+                                     actions = [EditDocument()],
+                                     flags = QtCore.Qt.Window )
+        # show maximized seems to trigger a bug in qt which scrolls the page 
+        # down dialog.showMaximized()
+        resize_widget_to_screen( dialog )
+        return dialog
                 
     def loadFinished(self):
         self.finished = True
+        
+    def gui_run( self, gui_context ):
+        dialog = self.render(self, gui_context )
+        with hide_progress_dialog( gui_context ):
+            dialog.exec_()
        
 class RenewSixMonths(Action):
     verbose_name = _('Renew 6 Months')
@@ -126,15 +146,19 @@ class RenewalNotice(Action):
     tooltip = _('Print Renewal Notices')
     
     def model_run(self, model_context):
-        # iterator = model_context.get_selection() # Would allow the manual specification of subscriptions to print.
         iterator = model_context.get_collection()
         addresses = []
+        conn = MySettings.ENGINE.connect()
         if iterator.next().__tablename__ == "outco":
-            price_six = select([Price.Six_Months], whereclause=(Price.Type == "Outco"))
-            price_twelve = select([Price.Twelve_Months], whereclause=(Price.Type == "Outco"))
+            s = select([Price], whereclause=(Price.Type == "Outco"))
+            result = conn.execute(s) 
+            price_six = result.Six_Months
+            price_twelve = result.Twelve_Months
         else:
-            price_six = select([Price.Six_Months], whereclause=(Price.Type == "Inco"))
-            price_twelve = select([Price.Twelve_Months], whereclause=(Price.Type == "Inco"))
+            s = select([Price], whereclause=(Price.Type == "Inco"))
+            result = conn.execute(s) 
+            price_six = result.Six_Months
+            price_twelve = result.Twelve_Months
         
         for a in iterator:
             context = {}
@@ -155,7 +179,6 @@ class RenewalNotice(Action):
             context['zip'] = a.ZIP
             context['expiration_date'] = a.End_Date
             context['file_code'] = a.__tablename__.upper()
-
         
             """# Eventually I'll want to pull these prices from an editable table instead of hard-coding them.
             if context['file_code'] == 'outco':
@@ -164,6 +187,7 @@ class RenewalNotice(Action):
             else:
                 context['price_six'] = "24.50"
                 context['price_twelve'] = "35.00"""
+                
             context['price_six'], context['price_twelve'] = price_six, price_twelve
             addresses.append(context)
             
@@ -377,6 +401,8 @@ class LC12 (Entity):
         AddressLabelsDotMatrix(),
         ]
         
+        delete_mode = 'on_confirm'
+        
         
 class Soperton (Entity):
     __tablename__ = "soperton"
@@ -401,6 +427,8 @@ class Soperton (Entity):
         AddressLabelsDotMatrix(),
         ]
         
+        delete_mode = 'on_confirm'
+        
         
 class VC12345 (Entity):
     __tablename__ = "vc12345"
@@ -424,6 +452,8 @@ class VC12345 (Entity):
         AddressLabels(),
         AddressLabelsDotMatrix(),
         ]
+        
+        delete_mode = 'on_confirm'
         
 
 class VPO_Box (Entity):
@@ -454,6 +484,8 @@ class VPO_Box (Entity):
         AddressLabelsDotMatrix(),
         ]
         
+        delete_mode = 'on_confirm'
+        
         
 class LPO_Box (Entity):
     __tablename__ = "lpo_boxes"
@@ -482,6 +514,8 @@ class LPO_Box (Entity):
         AddressLabels(),
         AddressLabelsDotMatrix(),
         ]
+        
+        delete_mode = 'on_confirm'
         
 
 class Vidalia (Entity):
@@ -559,6 +593,8 @@ class Vidalia (Entity):
         
         list_filter = [EditorFilter(field_name="End_Date", default_operator=between_op, default_value_1=today.replace(day=1), 
                        default_value_2=today.replace(day=days_in_current_month))]
+                       
+        delete_mode = 'on_confirm'
     
     def __Unicode__ (self):
         return self.Address
@@ -639,6 +675,8 @@ class Lyons (Entity):
 		
         list_filter = [EditorFilter(field_name="End_Date", default_operator=between_op, default_value_1=today.replace(day=1), 
                        default_value_2=today.replace(day=days_in_current_month))]
+                       
+        delete_mode = 'on_confirm'
     
     def __Unicode__ (self):
         return self.Address
@@ -719,6 +757,8 @@ class Out304 (Entity):
 		
         list_filter = [EditorFilter(field_name="End_Date", default_operator=between_op, default_value_1=today.replace(day=1), 
                        default_value_2=today.replace(day=days_in_current_month))]
+                       
+        delete_mode = 'on_confirm'
     
     def __Unicode__ (self):
         return self.Address
@@ -800,6 +840,8 @@ class Outco (Entity):
 		
         list_filter = [EditorFilter(field_name="End_Date", default_operator=between_op, default_value_1=today.replace(day=1), 
                        default_value_2=today.replace(day=days_in_current_month))]
+                       
+        delete_mode = 'on_confirm'
     
     def __Unicode__ (self):
         return self.Address
@@ -822,3 +864,5 @@ class Price (Entity):
         'Six_Months',
         'Twelve_Months',
         ]
+        
+        delete_mode = 'on_confirm'
