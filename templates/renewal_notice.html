@@ -10,11 +10,8 @@
             font-family: Helvetica;
             float: none;
             }
-        table.page {
-            page-break-inside: avoid;
+        div.page {
             page-break-after: always;
-            }
-        tr {
             page-break-inside: avoid;
             }
         div.detach {
@@ -48,12 +45,14 @@
             margin-right: .125in;
             
             float: left;
-            overflow: visible;
+            overflow: hidden;
             }
         </style>
 </head>
 <body>
-{% for address in addresses %}
+{% for page in pages %}
+<div class="page">
+{% for subscription in page %}
 <div class="detach">
     <table>
     <tr>
@@ -64,9 +63,9 @@
     <tr>
         <td><div class="address_window">
         <pre>
-        {{ address.name }}
-        {{ address.address }}
-        {{ address.city }}, {{ address.state }} {{ address.zip }}
+        {{ subscription.name }}
+        {{ subscription.address }}
+        {{ subscription.city }}, {{ subscription.state }} {{ subscription.zip }}
         </pre>
         </div></td>
         
@@ -74,23 +73,23 @@
             <table>
             <tr>
                 <td><b>File Name:</b></td>
-                <td><pre>{{ address.file_code }}</pre></td>
+                <td><pre>{{ subscription.file_code }}</pre></td>
             </tr>
             <tr>
                 <td><b>Record Number:</b></td>
-                <td><pre>{{ address.record_number }}</pre></td>
+                <td><pre>{{ subscription.record_number }}</pre></td>
             </tr>
             <tr>
                 <td><b>Expiration Date:</b></td>
-                <td><pre>{{ address.expiration_date }}</pre></td>
+                <td><pre>{{ subscription.expiration_date }}</pre></td>
             </tr>
             <tr>
                 <td><b>Amount Due:</b></td>
-                <td><pre>${{ address.price_twelve }} 12 months</pre></td>
+                <td><pre>${{ subscription.price_twelve }} 12 months</pre></td>
             </tr>
             <tr>
                 <td></td>
-                <td><pre>${{ address.price_six }} 6 months</pre></td>
+                <td><pre>${{ subscription.price_six }} 6 months</pre></td>
             </tr>
             </table>
         </td>
@@ -102,6 +101,8 @@
         </td>
     </tr>
 </table>
+</div>
+{% endfor %}
 </div>
 {% endfor %}
 </body>

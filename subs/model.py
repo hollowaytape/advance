@@ -127,16 +127,16 @@ class RenewalNotice(Action):
     
     def model_run(self, model_context):
         collection = list(model_context.get_collection())
-        addresses = []
+        subscriptions = []
         conn = model_context.session.begin()
         
         if collection[0].__tablename__ == "outco":
-            q = model_context.session.query(Price).filter(Price.Type == "Outco").first()
+            q = model_context.session.query(Price).filter(Price.Type == u'Outco').first()
             price_six = format(q.Six_Months, '.2f')
             price_twelve = format(q.Twelve_Months, '.2f')
             conn.commit()
         else:
-            q = model_context.session.query(Price).filter(Price.Type == "Inco").first()
+            q = model_context.session.query(Price).filter(Price.Type == u'Inco').first()
             price_six = format(q.Six_Months, '.2f')
             price_twelve = format(q.Twelve_Months, '.2f')
             conn.commit()
@@ -145,8 +145,22 @@ class RenewalNotice(Action):
         for a in collection:
             context = {}
             context['record_number'] = a.id
-            
             context['name'] = "%s %s" % (a.First_Name, a.Last_Name)
+            context['city'], context['state'], context['zip'], context['expiration_date'] = a.City, a.State, a.ZIP, a.End_Date
+            context['file_code'] = a.__tablename__.upper()
+            context['price_six'], context['price_twelve'] = price_six, price_twelve
+            
+            """try: # Try to clean it up but really it's more broken.
+                context['address'] = a.Address.join("%s %s" % (a.PO_Box, a.Rural_Box))
+            except AttributeError:
+                try:
+                    context['address'] = "%s %s" % (a.Address, a.PO_Box)
+                except AttributeError:
+                    try:
+                        context['address'] = "%s %s" % (a.PO_Box, a.Rural_Box)
+                    except AttributeError:
+                        context['address'] = a.Address"""
+                        
             if a.PO_Box is None and a.Rural_Box is None:
                 context['address'] = a.Address
             elif a.Rural_Box is None:
@@ -156,13 +170,9 @@ class RenewalNotice(Action):
             else:
                 context['address'] = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
                 
-            context['city'], context['state'], context['zip'], context['expiration_date'] = a.City, a.State, a.ZIP, a.End_Date
-            context['file_code'] = a.__tablename__.upper()
-            context['price_six'], context['price_twelve'] = price_six, price_twelve
+            subscriptions.append(context)
             
-            addresses.append(context)
-            
-        pages = list(chunks(addresses, 3))
+        pages = list(chunks(subscriptions, 3))
         context = {'pages': pages}
             
         jinja_environment = jinja2.Environment(autoescape=True,
@@ -210,27 +220,24 @@ class AddressList(Action):
                               environment = jinja_environment)
         
 class AddressLabels(Action):
-    """Print a (laser) sheet of address labels from the selected records."""
+    """Print a (laser) sheet of address labels from a collection."""
     verbose_name= _('Print Labels (Laser)')
     icon = Icon('tango/16x16/actions/document-print.png')
     tooltip = _('Print Address Labels (Laser)')
 
     def model_run(self, model_context):
-        iterator = model_context.get_collection()
+        collection = list(model_context.get_collection())
         addresses = []
         count = 0
-        
-        # Check the table name through the iterator's first entry, to minimize db queries and determine biz rules.
-        table = iterator.next().__tablename__
+        table = collection[0].__tablename__
         
         if table == "outco":
             # In OutCO, we want to count the number of addresses in each zone.
             zone_counts = {}
-            # There are zones from 0 to 8.
             for n in range(0, 9):
                 zone_counts[n] = 0
         
-        for a in iterator:
+        for a in collection:
             try:
                 if a.Tag == False:
                     continue
@@ -242,15 +249,18 @@ class AddressLabels(Action):
                 line_1 = "%s %s" % (a.First_Name, " ".join(a.Last_Name.split()))
             except AttributeError:
                 line_1 = "POSTAL PATRON"
-                
-            try:
-                line_2 = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
-            except AttributeError:
-                try:
-                    line_2 = a.Address
-                except AttributeError:
-                    line_2 = "PO BOX %s" % a.Number
             
+            # Fetch address data.
+            if a.PO_Box is None and a.Rural_Box is None:
+                line_2 = a.Address
+            elif a.Rural_Box is None:
+                line_2 = "%s %s" % (a.Address, a.PO_Box)
+            elif a.Address is None:
+                line_2 = "%s %s" % (a.PO_Box, a.Rural_Box)
+            else:
+                line_2 = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
+            
+            # Fetch City-State-Zip data.
             if table == "vpo_boxes":
                 line_3 = "VIDALIA, GA 30475"
             elif table in ("lpo_boxes", "lc12"):
@@ -264,6 +274,7 @@ class AddressLabels(Action):
             else:
                 line_3 = "%s, %s %s" % (a.City, a.State, a.ZIP)
             
+            # Fetch End_Date data.
             try:
                 right_1 = a.End_Date
             except AttributeError:
@@ -271,16 +282,17 @@ class AddressLabels(Action):
                 
             right_2 = a.id
             
-            try:
-            # This case includes major files and PO Boxes.
+            # Fetch Mailing Stuff data.
+            try:                                                 # This case includes major files and PO Boxes.
                 right_3 = "%s    %s" % (a.City_Code, a.Walk_Sequence)
-            # LC12, VC12345, and Soperton have City RTE and Sort Code instead.
-            except AttributeError: 
+            
+            except AttributeError:                              # LC12, VC12345, and Soperton have City RTE and Sort Code instead.
                 right_3 = "%s    %s" % (a.City_RTE, a.Sort_Code)
                 
             addresses.append((line_1, line_2, line_3, right_1, right_2, right_3))
             count += 1
             
+            # Count zones if necessary.
             if table == "outco":
                 zone_counts[int(a.Zone)] += 1
         
@@ -341,149 +353,10 @@ class AddressLabelsDotMatrix(Action):
         context = {'pages': pages}    
             
 
-        yield PrintHtml(context)                             
+        yield PrintPlainText(context)                             
                            
 
-class LC12 (Entity):
-    __tablename__ = "lc12"
-    
-    Address = Column(Unicode(70))
-    Walk_Sequence = Column(Integer())
-    City_Code = Column(Integer())
-    
-    class Admin(EntityAdmin):
-        verbose_name = 'LC12'
-        verbose_name_plural = 'LC12'
-        
-        list_display = [
-        'Address',
-        'Walk_Sequence',
-        'City_Code'
-        ]
-        
-        list_actions = [
-        DeleteSelection(),
-        AddressLabels(),
-        AddressLabelsDotMatrix(),
-        ]
-        
-        delete_mode = 'on_confirm'
-        
-        
-class Soperton (Entity):
-    __tablename__ = "soperton"
-    
-    Address = Column(Unicode(70))
-    Sort_Code = Column(Integer())
-    City_RTE = Column(Integer())
-    
-    class Admin(EntityAdmin):
-        verbose_name = 'Soperton'
-        verbose_name_plural = 'Soperton'
-        
-        list_display = [
-        'Address',
-        'Sort_Code',
-        'City_RTE'
-        ]
-        
-        list_actions = [
-        DeleteSelection(),
-        AddressLabels(),
-        AddressLabelsDotMatrix(),
-        ]
-        
-        delete_mode = 'on_confirm'
-        
-        
-class VC12345 (Entity):
-    __tablename__ = "vc12345"
-    
-    Address = Column(Unicode(70))
-    Sort_Code = Column(Integer())
-    City_RTE = Column(Integer())
-    
-    class Admin(EntityAdmin):
-        verbose_name = 'VC12345'
-        verbose_name_plural = 'VC12345'
-        
-        list_display = [
-        'Address',
-        'Sort_Code',
-        'City_RTE'
-        ]
-        
-        list_actions = [
-        DeleteSelection(),
-        AddressLabels(),
-        AddressLabelsDotMatrix(),
-        ]
-        
-        delete_mode = 'on_confirm'
-        
-
-class VPO_Box (Entity):
-    __tablename__ = "vpo_boxes"
-    
-    Number = Column(Unicode(9))
-    City_Code = Column(Unicode(3))
-    Select_Code = Column(Unicode(2))
-    Label_Stop = Column(Boolean())
-    Walk_Sequence = Column(Unicode(9))
-    Tag = Column(Boolean())
-    
-    class Admin(EntityAdmin):
-        verbose_name = 'Vidalia P.O. Box'
-        verbose_name_plural = 'Vidalia P.O. Boxes'
-        
-        list_display = [
-        'Number',
-        'City_Code',
-        'Select_Code',
-        'Walk_Sequence',
-        'Tag',
-        ]
-        
-        list_actions = [
-        DeleteSelection(),
-        AddressLabels(),
-        AddressLabelsDotMatrix(),
-        ]
-        
-        delete_mode = 'on_confirm'
-        
-        
-class LPO_Box (Entity):
-    __tablename__ = "lpo_boxes"
-    
-    Number = Column(Unicode(9))
-    City_Code = Column(Unicode(3))
-    Select_Code = Column(Unicode(2))
-    Label_Stop = Column(Boolean())
-    Walk_Sequence = Column(Integer())
-    Tag = Column(Boolean())
-    
-    class Admin(EntityAdmin):
-        verbose_name = 'Lyons P.O. Box'
-        verbose_name_plural = 'Lyons P.O. Boxes'
-        
-        list_display = [
-        'Number',
-        'City_Code',
-        'Select_Code',
-        'Walk_Sequence',
-        'Tag',
-        ]
-        
-        list_actions = [
-        DeleteSelection(),
-        AddressLabels(),
-        AddressLabelsDotMatrix(),
-        ]
-        
-        delete_mode = 'on_confirm'
-        
-
+ 
 class Vidalia (Entity):
     __tablename__ = "vidalia"
     
@@ -812,6 +685,141 @@ class Outco (Entity):
     def __Unicode__ (self):
         return self.Address
         
+class LC12 (Entity):
+    __tablename__ = "lc12"
+    
+    Address = Column(Unicode(70))
+    Walk_Sequence = Column(Integer())
+    City_Code = Column(Integer())
+    
+    class Admin(EntityAdmin):
+        verbose_name = 'LC12'
+        verbose_name_plural = 'LC12'
+        
+        list_display = [
+        'Address',
+        'Walk_Sequence',
+        'City_Code'
+        ]
+        
+        list_actions = [
+        AddressLabels(),
+        AddressLabelsDotMatrix(),
+        DeleteSelection(),
+        ]
+        
+        delete_mode = 'on_confirm'
+         
+class Soperton (Entity):
+    __tablename__ = "soperton"
+    
+    Address = Column(Unicode(70))
+    Sort_Code = Column(Integer())
+    City_RTE = Column(Integer())
+    
+    class Admin(EntityAdmin):
+        verbose_name = 'Soperton'
+        verbose_name_plural = 'Soperton'
+        
+        list_display = [
+        'Address',
+        'Sort_Code',
+        'City_RTE'
+        ]
+        
+        list_actions = [
+        AddressLabels(),
+        AddressLabelsDotMatrix(),
+        DeleteSelection(),
+        ]
+        
+        delete_mode = 'on_confirm'
+        
+class VC12345 (Entity):
+    __tablename__ = "vc12345"
+    
+    Address = Column(Unicode(70))
+    Sort_Code = Column(Integer())
+    City_RTE = Column(Integer())
+    
+    class Admin(EntityAdmin):
+        verbose_name = 'VC12345'
+        verbose_name_plural = 'VC12345'
+        
+        list_display = [
+        'Address',
+        'Sort_Code',
+        'City_RTE'
+        ]
+        
+        list_actions = [
+        AddressLabels(),
+        AddressLabelsDotMatrix(),
+        DeleteSelection(),
+        ]
+        
+        delete_mode = 'on_confirm'
+        
+class VPO_Box (Entity):
+    __tablename__ = "vpo_boxes"
+    
+    Number = Column(Unicode(9))
+    City_Code = Column(Unicode(3))
+    Select_Code = Column(Unicode(2))
+    Label_Stop = Column(Boolean())
+    Walk_Sequence = Column(Unicode(9))
+    Tag = Column(Boolean())
+    
+    class Admin(EntityAdmin):
+        verbose_name = 'Vidalia P.O. Box'
+        verbose_name_plural = 'Vidalia P.O. Boxes'
+        
+        list_display = [
+        'Number',
+        'City_Code',
+        'Select_Code',
+        'Walk_Sequence',
+        'Tag',
+        ]
+        
+        list_actions = [
+        AddressLabels(),
+        AddressLabelsDotMatrix(),
+        DeleteSelection(),
+        ]
+        
+        delete_mode = 'on_confirm'
+        
+class LPO_Box (Entity):
+    __tablename__ = "lpo_boxes"
+    
+    Number = Column(Unicode(9))
+    City_Code = Column(Unicode(3))
+    Select_Code = Column(Unicode(2))
+    Label_Stop = Column(Boolean())
+    Walk_Sequence = Column(Integer())
+    Tag = Column(Boolean())
+    
+    class Admin(EntityAdmin):
+        verbose_name = 'Lyons P.O. Box'
+        verbose_name_plural = 'Lyons P.O. Boxes'
+        
+        list_display = [
+        'Number',
+        'City_Code',
+        'Select_Code',
+        'Walk_Sequence',
+        'Tag',
+        ]
+        
+        list_actions = [
+        AddressLabels(),
+        AddressLabelsDotMatrix(),
+        DeleteSelection(),
+        ]
+        
+        delete_mode = 'on_confirm'
+       
 class Price (Entity):
     __tablename__ = "price"
     
