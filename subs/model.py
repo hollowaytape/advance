@@ -40,12 +40,11 @@ def chunks(l, n):
         yield l[i:i+n]
                
        
-class PrintHtmlWQ( PrintPreview ):    
+class PrintHtmlWQ(PrintPreview):    
     # Thanks to Gonzalo from the Camelot Google Group for this image-rendering fix.
     from camelot.core.templates import environment
     def __init__ (self, template, context={}, environment=environment):
         self.document = None
-        # self.html = html
         self.printer = None
         self.margin_left = None
         self.margin_top = None
@@ -82,6 +81,23 @@ class PrintHtmlWQ( PrintPreview ):
     def loadFinished(self):
         self.finished = True
        
+class PrintPlainText(PrintPreview):
+    # PrintPreview using QPrinter.NativeFormat instead of PdfFormat.
+    def get_printer( self ):
+        if not self.printer:
+            self.printer = QtGui.QPrinter()
+        if not self.printer.isValid():
+            self.printer.setOutputFormat( QtGui.QPrinter.NativeFormat )
+        return self.printer
+        
+    def get_pdf( self ):
+        self.config_printer()
+        self.printer.setOutputFormat(QtGui.QPrinter.NativeFormat)
+        filepath = OpenFile.create_temporary_file('.txt')
+        self.printer.setOutputFileName(filepath)
+        self.document.print_(self.printer)
+        return filepath   
+       
 class RenewSixMonths(Action):
     verbose_name = _('Renew 6 Months')
     icon = Icon('tango/16x16/actions-document-print-preview.png')
@@ -110,12 +126,11 @@ class RenewalNotice(Action):
     tooltip = _('Print Renewal Notices')
     
     def model_run(self, model_context):
-        iterator = model_context.get_collection()
+        collection = list(model_context.get_collection())
         addresses = []
-        
         conn = model_context.session.begin()
         
-        if iterator.next().__tablename__ == "outco":
+        if collection[0].__tablename__ == "outco":
             q = model_context.session.query(Price).filter(Price.Type == "Outco").first()
             price_six = format(q.Six_Months, '.2f')
             price_twelve = format(q.Twelve_Months, '.2f')
@@ -126,7 +141,8 @@ class RenewalNotice(Action):
             price_twelve = format(q.Twelve_Months, '.2f')
             conn.commit()
         
-        for a in iterator:
+        
+        for a in collection:
             context = {}
             context['record_number'] = a.id
             
@@ -140,24 +156,14 @@ class RenewalNotice(Action):
             else:
                 context['address'] = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
                 
-            context['city'] = a.City
-            context['state'] = a.State
-            context['zip'] = a.ZIP
-            context['expiration_date'] = a.End_Date
+            context['city'], context['state'], context['zip'], context['expiration_date'] = a.City, a.State, a.ZIP, a.End_Date
             context['file_code'] = a.__tablename__.upper()
-        
-            """# Eventually I'll want to pull these prices from an editable table instead of hard-coding them.
-            if context['file_code'] == 'outco':
-                context['price_six'] = "32.50"
-                context['price_twelve'] = "50.00"
-            else:
-                context['price_six'] = "24.50"
-                context['price_twelve'] = "35.00"""
-                
             context['price_six'], context['price_twelve'] = price_six, price_twelve
+            
             addresses.append(context)
             
-        context = {'addresses' : addresses}
+        pages = list(chunks(addresses, 3))
+        context = {'pages': pages}
             
         jinja_environment = jinja2.Environment(autoescape=True,
                                                loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
@@ -226,6 +232,12 @@ class AddressLabels(Action):
         
         for a in iterator:
             try:
+                if a.Tag == False:
+                    continue
+            except AttributeError:
+                pass
+                
+            try:
                 # Last Names sometimes have "           SR" appended onto them which breaks the labels. Split them.
                 line_1 = "%s %s" % (a.First_Name, " ".join(a.Last_Name.split()))
             except AttributeError:
@@ -240,18 +252,11 @@ class AddressLabels(Action):
                     line_2 = "PO BOX %s" % a.Number
             
             if table == "vpo_boxes":
-                if a.Tag == False:
-                    continue
                 line_3 = "VIDALIA, GA 30475"
+            elif table in ("lpo_boxes", "lc12"):
+                line_3 = "LYONS, GA 30436"
             elif table == "vc12345":
                 line_3 = "VIDALIA, GA 30474"
-                
-            elif table == "lpo_boxes":
-                if a.Tag == False:
-                    continue
-                line_3 = "LYONS, GA 30436"
-            elif table == "lc12":
-                line_3 = "LYONS, GA 30436"
                 
             elif table == "soperton":
                 line_3 = "SOPERTON, GA 30457"
@@ -300,7 +305,7 @@ class AddressLabels(Action):
                                                loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
                                                'templates')))    
 
-        yield RenderJinjaHtml(template = 'labels.html',
+        yield PrintHtmlWQ(template = 'labels.html',
                               context = context,
                               environment = jinja_environment)             
 
@@ -335,13 +340,8 @@ class AddressLabelsDotMatrix(Action):
         # The final result: a list (pages) of rows (labels).
         context = {'pages': pages}    
             
-        jinja_environment = jinja2.Environment(autoescape=True,
-                                               loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
-                                               'templates')))    
 
-        yield RenderJinjaHtml(template = 'labels_dotmatrix.html',
-                              context = context,
-                              environment = jinja_environment)                                        
+        yield PrintHtml(context)                             
                            
 
 class LC12 (Entity):
