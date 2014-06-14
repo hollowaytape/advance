@@ -46,9 +46,7 @@
         </style>
 </head>
 <body>
-{% for page in pages %}
-<div class="page">
-{% for subscription in page %}
+{% for subscription in subscriptions %}
 <div class="detach">
     <table>
     <tr>
@@ -98,9 +96,6 @@
     </tr>
 </table>
 </div>
-{% endfor %}
-</div>
-<div class="page-breaker"></div>
 {% endfor %}
 </body>
 </html>

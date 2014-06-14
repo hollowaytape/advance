@@ -25,12 +25,15 @@ from camelot.view.model_thread import get_model_thread
 from camelot.view.action_steps.orm import FlushSession, DeleteObject
 from camelot.view.action_steps.print_preview import PrintHtml, PrintJinjaTemplate, PrintPreview
 from camelot.view.action_steps.update_progress import UpdateProgress
+from camelot.view.action_steps.open_file import OpenFile
 from PyQt4.QtWebKit import QWebPage, QWebView
 from PyQt4.QtCore import QUrl, QFile, QObject, QEventLoop
 from PyQt4 import QtGui
 
 from camelot.view.filters import EditorFilter
 from sqlalchemy.sql.operators import between_op
+
+from PyPDF2 import PdfFileMerger
 
 today = datetime.date.today()
 days_in_current_month = calendar.monthrange(today.year, today.month)[1]
@@ -57,7 +60,6 @@ class PrintHtmlWQ(PrintPreview):
         
         self.template = environment.get_template(template)
         self.html = self.template.render(context)
-        self.context = context
       
     def generateDocument(self):       
         from PyQt4.QtWebKit import QWebView, QWebSettings
@@ -81,6 +83,33 @@ class PrintHtmlWQ(PrintPreview):
                 
     def loadFinished(self):
         self.finished = True
+
+    def get_printer( self ):
+        if not self.printer:
+            self.printer = QtGui.QPrinter()
+        if not self.printer.isValid():
+            self.printer.setOutputFormat( QtGui.QPrinter.PdfFormat )
+        return self.printer
+
+    def config_printer( self ):
+        self.printer = self.get_printer()
+        if self.page_size != None:
+            self.printer.setPageSize( self.page_size )
+        if self.page_orientation != None:
+            self.printer.setOrientation( self.page_orientation )
+        if None not in [self.margin_left, self.margin_top, self.margin_right, self.margin_bottom, self.margin_unit]:
+            self.printer.setPageMargins( self.margin_left, self.margin_top, self.margin_right, self.margin_bottom, self.margin_unit )
+        return self.printer
+
+    def get_pdf( self ):
+        self.config_printer()
+        self.printer.setOutputFormat( QtGui.QPrinter.PdfFormat )
+        filepath = OpenFile.create_temporary_file('.pdf')
+        self.printer.setOutputFileName(filepath)
+        self.document.print_(self.printer)
+        return filepath
+
+   
        
 class PrintPlainText(PrintPreview):
     # PrintPreview using QPrinter.NativeFormat instead of PdfFormat.
@@ -162,17 +191,6 @@ class RenewalNotice(Action):
             context['city'], context['state'], context['zip'], context['expiration_date'] = a.City, a.State, a.ZIP, a.End_Date
             context['file_code'] = a.__tablename__.upper()
             context['price_six'], context['price_twelve'] = price_six, price_twelve
-            
-            """try: # Try to clean it up but really it's more broken.
-                context['address'] = a.Address.join("%s %s" % (a.PO_Box, a.Rural_Box))
-            except AttributeError:
-                try:
-                    context['address'] = "%s %s" % (a.Address, a.PO_Box)
-                except AttributeError:
-                    try:
-                        context['address'] = "%s %s" % (a.PO_Box, a.Rural_Box)
-                    except AttributeError:
-                        context['address'] = a.Address"""
                         
             if a.PO_Box is None and a.Rural_Box is None:
                 context['address'] = a.Address
@@ -187,15 +205,25 @@ class RenewalNotice(Action):
             subscriptions.append(context)
             
         pages = list(chunks(subscriptions, 3))
-        context = {'pages': pages}
-            
+        
         jinja_environment = jinja2.Environment(autoescape=True,
                                                loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
                                                'templates')))
-                                               
-        yield PrintHtmlWQ(template = 'renewal_notice.html',
-                              context = context,
-                              environment = jinja_environment)
+        
+        merger = PdfFileMerger()
+        for page in pages:
+            context = {'addresses': page}
+            htmlwq = PrintHtmlWQ(template = "renewal_notice.html", context = context, environment = jinja_environment)
+            htmlwq.generateDocument()
+            file = htmlwq.get_pdf()
+            input = open(file, "rb")
+            merger.append(fileobj = input)
+        output = open("merged_pages.pdf", "wb")
+        merger.write(output)
+        
+        # Print the final PDF.        
+        # I need to instantiate a QWebView with the output somehow.
+        yield PrintPreview(output)
         
 class AddressList(Action):
     """Print a list of addresses from the selected records."""
