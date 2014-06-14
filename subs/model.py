@@ -24,6 +24,7 @@ from camelot.view.art import Icon
 from camelot.view.model_thread import get_model_thread
 from camelot.view.action_steps.orm import FlushSession, DeleteObject
 from camelot.view.action_steps.print_preview import PrintHtml, PrintJinjaTemplate, PrintPreview
+from camelot.view.action_steps.update_progress import UpdateProgress
 from PyQt4.QtWebKit import QWebPage, QWebView
 from PyQt4.QtCore import QUrl, QFile, QObject, QEventLoop
 from PyQt4 import QtGui
@@ -51,7 +52,7 @@ class PrintHtmlWQ(PrintPreview):
         self.margin_right = None
         self.margin_bottom = None
         self.margin_unit = QtGui.QPrinter.Millimeter
-        self.page_size = None
+        self.page_size = QtGui.QPrinter.Letter
         self.page_orientation = None
         
         self.template = environment.get_template(template)
@@ -83,6 +84,17 @@ class PrintHtmlWQ(PrintPreview):
        
 class PrintPlainText(PrintPreview):
     # PrintPreview using QPrinter.NativeFormat instead of PdfFormat.
+    def __init__ (self, text):
+        self.document = text
+        self.printer = None
+        self.margin_left = None
+        self.margin_top = None
+        self.margin_right = None
+        self.margin_bottom = None
+        self.margin_unit = QtGui.QPrinter.Millimeter
+        self.page_size = QtGui.QPrinter.Letter
+        self.page_orientation = None
+        
     def get_printer( self ):
         if not self.printer:
             self.printer = QtGui.QPrinter()
@@ -127,6 +139,7 @@ class RenewalNotice(Action):
     
     def model_run(self, model_context):
         collection = list(model_context.get_collection())
+        count = len(collection)
         subscriptions = []
         conn = model_context.session.begin()
         
@@ -142,7 +155,7 @@ class RenewalNotice(Action):
             conn.commit()
         
         
-        for a in collection:
+        for i, a in enumerate(collection):
             context = {}
             context['record_number'] = a.id
             context['name'] = "%s %s" % (a.First_Name, a.Last_Name)
@@ -170,6 +183,7 @@ class RenewalNotice(Action):
             else:
                 context['address'] = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
                 
+            yield UpdateProgress(i, count)    
             subscriptions.append(context)
             
         pages = list(chunks(subscriptions, 3))
@@ -228,7 +242,7 @@ class AddressLabels(Action):
     def model_run(self, model_context):
         collection = list(model_context.get_collection())
         addresses = []
-        count = 0
+        count = len(collection)
         table = collection[0].__tablename__
         
         if table == "outco":
@@ -237,7 +251,7 @@ class AddressLabels(Action):
             for n in range(0, 9):
                 zone_counts[n] = 0
         
-        for a in collection:
+        for i, a in enumerate(collection):
             try:
                 if a.Tag == False:
                     continue
@@ -289,8 +303,8 @@ class AddressLabels(Action):
             except AttributeError:                              # LC12, VC12345, and Soperton have City RTE and Sort Code instead.
                 right_3 = "%s    %s" % (a.City_RTE, a.Sort_Code)
                 
+            yield UpdateProgress(i, count)    
             addresses.append((line_1, line_2, line_3, right_1, right_2, right_3))
-            count += 1
             
             # Count zones if necessary.
             if table == "outco":
@@ -329,33 +343,34 @@ class AddressLabelsDotMatrix(Action):
 
     def model_run(self, model_context):
         iterator = model_context.get_collection()
-        addresses = []
+        text = ""
         count = 0
         
         for a in iterator:
-            # Last Names sometimes have "           SR" appened onto them which breaks the labels. Split them.
-            line_1 = "%s %s" % (a.First_Name, " ".join(a.Last_Name.split()))
-            line_2 = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
-            line_3 = "%s, %s %s" % (a.City, a.State, a.ZIP)
+            name_date = a.Name + str(a.End_Date)
+            address_id = a.Address + str(a.id)
+            city_state_zip = "%s, %s %s" % (a.City, a.State, a.Zip)
+            city_code_zone = a.City_Code + str(a.Zone)
             
-            right_1 = a.End_Date
-            right_2 = a.id
-            right_3 = "%s   %s" % (a.City_Code, a.Walk_Sequence)
-            addresses.append((line_1, line_2, line_3, right_1, right_2, right_3))
+            # line_1 = Name, spaces so that the line adds up to 32char, End_Date
+            line_1 = a.Name + ((32 - (len(name_date)))*" ") + a.End_Date + "\n"
+
+            # line_2 = Address, spaces to ensure the line adds up to 32char, ID
+            line_2 = a.Address + ((32 - len(address_id))*" ") + a.id + "\n"
+
+            # line_3 = City, State, Zip, spaces, City_Code, spaces, Zone
+            line_3a = city_state_zip + ((20 - (len(city_state_zip)))*" ")
+            line_3b = ((10 - len(city_code_zone))*" ") + a.City_Code + "  " + a.Zone + "\n"
+            line_3 = line_3a + line_3b
+            
+            text.append(line_1 + line_2 + line_3 + "\n")        # Extra line break to separate the next label.
             count += 1
         
         # The count is displayed in the final label of the printout. So, add it to the list.
-        addresses.append(('Count:', '', '', count, '', ''))
-        
-        # Each page contains 11 labels.
-        pages = list(chunks(addresses, 11))
-        # The final result: a list (pages) of rows (labels).
-        context = {'pages': pages}    
-            
+        text.append("Count: %s" % count)
 
-        yield PrintPlainText(context)                             
+        yield PrintPlainText(text)                             
                            
-
  
 class Vidalia (Entity):
     __tablename__ = "vidalia"

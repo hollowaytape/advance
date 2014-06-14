@@ -1,24 +1,20 @@
 <html>
 <head>
     <title>Renewal Notice</title>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <style>
-        @page {
-            size 8.5in 11in;
-            }
         body {
             font-family: Helvetica;
             float: none;
             }
         div.page {
-            page-break-after: always;
-            page-break-inside: avoid;
+            size 8.5in 11in;
+            border: 1px transparent;
             }
         div.detach {
             margin: 0in 0in 0.448in; /* "Shift it half an inch to the left: .1875 removed left margin here */
             height: 3.5in; /* 4.323in */
             position: relative;
-            border: 1px solid transparent;
+            border: 1px transparent;
             }
         div.return_window {
             width: 3.125in;
@@ -104,6 +100,7 @@
 </div>
 {% endfor %}
 </div>
+<div class="page-breaker"></div>
 {% endfor %}
 </body>
 </html>
