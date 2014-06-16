@@ -10,6 +10,10 @@
         padding-top: .5in;
         padding-bottom: .5in;
         }
+    div.page {
+        border: 1px dotted black;
+        margin-bottom: 1in;
+        }
     .label {
         width: 2.625in; /* plus .6 inches from padding */
         height: 1.0in; /* plus .125 inches from padding */
@@ -32,7 +36,7 @@
 </head>
 <body>
 {% for page in pages %}
-    <div style="position: relative; height: 11in; page-break-after: always;">
+    <div class="page">
     <table>
     {% for row in page %}
         <tr>
