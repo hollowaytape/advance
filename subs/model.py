@@ -27,16 +27,17 @@ from camelot.view.action_steps.print_preview import PrintHtml, PrintJinjaTemplat
 from camelot.view.action_steps.update_progress import UpdateProgress
 from camelot.view.action_steps.open_file import OpenFile
 from PyQt4.QtWebKit import QWebPage, QWebView
-from PyQt4.QtCore import QUrl, QFile, QObject, QEventLoop
+from PyQt4.QtCore import QUrl, QFile, QObject, QEventLoop, Qt, QString
 from PyQt4 import QtGui
 
 from camelot.view.filters import EditorFilter
 from sqlalchemy.sql.operators import between_op
 
-from PyPDF2 import PdfFileMerger
-
 today = datetime.date.today()
 days_in_current_month = calendar.monthrange(today.year, today.month)[1]
+
+JINJA_ENVIRONMENT = jinja2.Environment(autoescape=True,
+                    loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR,'templates')))
 
 def chunks(l, n):
     """ Yield successive n-sized chunks from l. Used to split address lists into page-sized chunks."""
@@ -44,6 +45,47 @@ def chunks(l, n):
         yield l[i:i+n]
                
        
+def name_string(a, curtail=False):
+    try:
+        # Last Names sometimes have "           SR" appended onto them which breaks the labels. Split them.
+        if curtail:
+            return ("%s %s" % (a.First_Name, " ".join(a.Last_Name.split())))[0:21]
+        else:
+            return "%s %s" % (a.First_Name, " ".join(a.Last_Name.split()))
+    except AttributeError:
+        return "POSTAL PATRON"
+
+def address_string(a, curtail=False):
+    if not a.PO_Box and not a.Rural_Box:
+       a = a.Address
+    elif not a.Address and not a.Rural_Box:
+       a = a.PO_Box
+    elif not a.Rural_Box:
+       a = "%s %s" % (a.Address, a.PO_Box)
+    elif not a.Address:
+       a = "%s %s" % (a.PO_Box, a.Rural_Box)
+    else:
+       a = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
+
+    if curtail:
+        return a[0:27]
+    else:
+        return a
+
+def city_state_zip_string(a, table):
+    if table == "vpo_boxes":
+        return "VIDALIA, GA 30475"
+    elif table in ("lpo_boxes", "lc12"):
+        return "LYONS, GA 30436"
+    elif table == "vc12345":
+        return "VIDALIA, GA 30474"
+    elif table == "soperton":
+        return "SOPERTON, GA 30457"
+                
+    else:
+        return "%s, %s %s" % (a.City, a.State, a.ZIP)
+
+
 class PrintHtmlWQ(PrintPreview):    
     # Thanks to Gonzalo from the Camelot Google Group for this image-rendering fix.
     from camelot.core.templates import environment
@@ -76,7 +118,6 @@ class PrintHtmlWQ(PrintPreview):
         if not self.finished:
             loop.exec_()       
         
-        
     def render(self, gui_context):
         self.generateDocument()
         return super(PrintHtmlWQ, self).render(gui_context)
@@ -87,7 +128,8 @@ class PrintHtmlWQ(PrintPreview):
 class PrintPlainText(PrintPreview):
     # PrintPreview using QPrinter.NativeFormat instead of PdfFormat.
     def __init__ (self, text):
-        self.document = text
+        self.document = None
+        self.text = text
         self.printer = None
         self.margin_left = None
         self.margin_top = None
@@ -97,20 +139,31 @@ class PrintPlainText(PrintPreview):
         self.page_size = QtGui.QPrinter.Letter
         self.page_orientation = None
         
-    def get_printer( self ):
+    def render(self):
+        self.document = QtGui.QPlainTextEdit(self.text)
+
         if not self.printer:
             self.printer = QtGui.QPrinter()
         if not self.printer.isValid():
             self.printer.setOutputFormat( QtGui.QPrinter.NativeFormat )
-        return self.printer
-        
-    def get_pdf( self ):
-        self.config_printer()
-        self.printer.setOutputFormat(QtGui.QPrinter.NativeFormat)
-        filepath = OpenFile.create_temporary_file('.txt')
-        self.printer.setOutputFileName(filepath)
-        self.document.print_(self.printer)
-        return filepath   
+        if self.page_size != None:
+            self.printer.setPageSize( self.page_size )
+        if self.page_orientation != None:
+            self.printer.setOrientation( self.page_orientation )
+        dialog = QtGui.QPrintPreviewDialog(self.printer, flags=Qt.Window)
+        dialog.paintRequested.connect( self.paint_on_printer )
+        # show maximized seems to trigger a bug in qt which scrolls the page 
+        # down dialog.showMaximized()
+        desktop = QtGui.QApplication.desktop()
+        available_geometry = desktop.availableGeometry( dialog )
+        # use the size of the screen instead to set the dialog size
+        dialog.resize( available_geometry.width() * 0.75, 
+                       available_geometry.height() * 0.75 )
+        return dialog
+
+    def gui_run( self, gui_context ):
+        dialog = self.render()
+        dialog.exec_()
        
 class RenewSixMonths(Action):
     verbose_name = _('Renew 6 Months')
@@ -156,35 +209,22 @@ class RenewalNotice(Action):
             price_twelve = format(q.Twelve_Months, '.2f')
             conn.commit()
         
-        
         for i, a in enumerate(collection):
             context = {}
             context['record_number'] = a.id
-            context['name'] = "%s %s" % (a.First_Name, a.Last_Name)
+            context['name'] = name_string(a)
+            context['address'] = address_string(a)
             context['city'], context['state'], context['zip'], context['expiration_date'] = a.City, a.State, a.ZIP, a.End_Date
             context['file_code'] = a.__tablename__.upper()
             context['price_six'], context['price_twelve'] = price_six, price_twelve
                         
-            if a.PO_Box is None and a.Rural_Box is None:
-                context['address'] = a.Address
-            elif a.Rural_Box is None:
-                context['address'] = "%s %s" % (a.Address, a.PO_Box)
-            elif a.Address is None:
-                context['address'] = "%s %s" % (a.PO_Box, a.Rural_Box)
-            else:
-                context['address'] = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
-                
             yield UpdateProgress(i, count)    
             subscriptions.append(context)
             
         pages = list(chunks(subscriptions, 3))
         context['pages'] = pages
         
-        jinja_environment = jinja2.Environment(autoescape=True,
-                                               loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
-                                               'templates')))
-        
-        yield PrintHtmlWQ(template = "renewal_notice.html", context=context, environment=jinja_environment)
+        yield PrintHtmlWQ(template = "renewal_notice.html", context=context, environment=JINJA_ENVIRONMENT)
         
 class AddressList(Action):
     """Print a list of addresses from the selected records."""
@@ -214,13 +254,10 @@ class AddressList(Action):
             
         pages = list(chunks(addresses, 32))
         context = {'pages': pages}
-        jinja_environment = jinja2.Environment(autoescape=True,
-                                               loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
-                                               'templates')))
                                                
         yield RenderJinjaHtml(template = 'addresses.html',
                               context = context,
-                              environment = jinja_environment)
+                              environment = JINJA_ENVIRONMENT)
         
 class AddressLabels(Action):
     """Print a (laser) sheet of address labels from a collection."""
@@ -242,40 +279,14 @@ class AddressLabels(Action):
         
         for i, a in enumerate(collection):
             try:
-                if a.Tag == False:
+                if not a.Tag:
                     continue
             except AttributeError:
                 pass
                 
-            try:
-                # Last Names sometimes have "           SR" appended onto them which breaks the labels. Split them.
-                line_1 = "%s %s" % (a.First_Name, " ".join(a.Last_Name.split()))
-            except AttributeError:
-                line_1 = "POSTAL PATRON"
-            
-            # Fetch address data.
-            if a.PO_Box is None and a.Rural_Box is None:
-                line_2 = a.Address
-            elif a.Rural_Box is None:
-                line_2 = "%s %s" % (a.Address, a.PO_Box)
-            elif a.Address is None:
-                line_2 = "%s %s" % (a.PO_Box, a.Rural_Box)
-            else:
-                line_2 = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
-            
-            # Fetch City-State-Zip data.
-            if table == "vpo_boxes":
-                line_3 = "VIDALIA, GA 30475"
-            elif table in ("lpo_boxes", "lc12"):
-                line_3 = "LYONS, GA 30436"
-            elif table == "vc12345":
-                line_3 = "VIDALIA, GA 30474"
-                
-            elif table == "soperton":
-                line_3 = "SOPERTON, GA 30457"
-                
-            else:
-                line_3 = "%s, %s %s" % (a.City, a.State, a.ZIP)
+            left_1 = name_string(a)
+            left_2 = address_string(a)
+            left_3 = city_state_zip_string(a, table)
             
             # Fetch End_Date data.
             try:
@@ -293,7 +304,7 @@ class AddressLabels(Action):
                 right_3 = "%s    %s" % (a.City_RTE, a.Sort_Code)
                 
             yield UpdateProgress(i, count)    
-            addresses.append((line_1, line_2, line_3, right_1, right_2, right_3))
+            addresses.append((left_1, left_2, left_3, right_1, right_2, right_3))
             
             # Count zones if necessary.
             if table == "outco":
@@ -316,13 +327,9 @@ class AddressLabels(Action):
         # The final result: a list (page) of lists (rows) of 3-tuples (addresses).
         context = {'pages': pages}
             
-        jinja_environment = jinja2.Environment(autoescape=True,
-                                               loader=jinja2.FileSystemLoader(os.path.join(settings.ROOT_DIR, 
-                                               'templates')))    
-
         yield PrintHtmlWQ(template = 'labels.html',
-                              context = context,
-                              environment = jinja_environment)             
+                          context = context,
+                          environment = JINJA_ENVIRONMENT)             
 
 class AddressLabelsDotMatrix(Action):
     """Print a (laser) sheet of address labels from the selected records."""
@@ -331,34 +338,45 @@ class AddressLabelsDotMatrix(Action):
     tooltip = _('Print Address Labels (Dot-Matrix)')
 
     def model_run(self, model_context):
-        iterator = model_context.get_collection()
-        text = ""
-        count = 0
+        collection = list(model_context.get_collection())
+        total_document = ""
+        count = len(collection)
         
-        for a in iterator:
-            name_date = a.Name + str(a.End_Date)
-            address_id = a.Address + str(a.id)
-            city_state_zip = "%s, %s %s" % (a.City, a.State, a.Zip)
-            city_code_zone = a.City_Code + str(a.Zone)
+        for a in collection:
+            name = name_string(a, curtail=True)
+            name_date = name + str(a.End_Date)
+
+            address = address_string(a, curtail=True)
+            address_id = address + str(a.id)
+
+            city_state_zip = "%s, %s %s" % (a.City, a.State, a.ZIP)
+            citycode_zone = a.City_Code + str(a.Zone)
             
             # line_1 = Name, spaces so that the line adds up to 32char, End_Date
-            line_1 = a.Name + ((32 - (len(name_date)))*" ") + a.End_Date + "\n"
+            line_1 = name + ((32 - (len(name_date)))*" ") + str(a.End_Date) + "\n"
 
             # line_2 = Address, spaces to ensure the line adds up to 32char, ID
-            line_2 = a.Address + ((32 - len(address_id))*" ") + a.id + "\n"
+            line_2 = address + ((32 - len(address_id))*" ") + str(a.id) + "\n"
 
             # line_3 = City, State, Zip, spaces, City_Code, spaces, Zone
             line_3a = city_state_zip + ((20 - (len(city_state_zip)))*" ")
-            line_3b = ((10 - len(city_code_zone))*" ") + a.City_Code + "  " + a.Zone + "\n"
+            line_3b = ((10 - len(citycode_zone))*" ") + a.City_Code + "  " + a.Zone + "\n"
             line_3 = line_3a + line_3b
+
+            contact = line_1 + line_2 + line_3 + "\n"
             
-            text.append(line_1 + line_2 + line_3 + "\n")        # Extra line break to separate the next label.
-            count += 1
+            total_document += contact       # Extra line break to separate the next label.
+            print total_document + "That was the document"
         
         # The count is displayed in the final label of the printout. So, add it to the list.
-        text.append("Count: %s" % count)
+        total_document.join("Count: %s" % count)
 
-        yield PrintPlainText(text)                             
+        try:
+            raise NameError
+        finally:
+            print total_document
+
+        yield PrintPlainText(total_document)                             
                            
  
 class Vidalia (Entity):
