@@ -2,6 +2,7 @@ import os
 import jinja2
 import datetime
 import calendar
+import subprocess
 
 from camelot.core.orm import Entity
 from camelot.admin.entity_admin import EntityAdmin
@@ -49,16 +50,22 @@ def name_string(a, curtail=False):
         return "POSTAL PATRON"
 
 def address_string(a, curtail=False):
-    if not a.PO_Box and not a.Rural_Box:
-       a = a.Address
-    elif not a.Address and not a.Rural_Box:
-       a = a.PO_Box
-    elif not a.Rural_Box:
-       a = "%s %s" % (a.Address, a.PO_Box)
-    elif not a.Address:
-       a = "%s %s" % (a.PO_Box, a.Rural_Box)
-    else:
-       a = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
+    try:
+        a = "PO BOX %s" % a.Number
+    except AttributeError:
+        try:
+            if not a.PO_Box and not a.Rural_Box:
+                a = a.Address
+            elif not a.Address and not a.Rural_Box:
+                a = a.PO_Box
+            elif not a.Rural_Box:
+                a = "%s %s" % (a.Address, a.PO_Box)
+            elif not a.Address:
+                a = "%s %s" % (a.PO_Box, a.Rural_Box)
+            else:
+                a = "%s %s %s" % (a.Address, a.PO_Box, a.Rural_Box)
+        except AttributeError:
+            a = a.Address
 
     if curtail:
         return a[0:27]
@@ -135,7 +142,8 @@ class PrintPlainText(PrintPreview):
         filepath = OpenFile.create_temporary_file('.txt')
         with open(filepath, "w") as text_file:
             text_file.write(self.text)
-        return os.system("start " + filepath)
+        return subprocess.call(['open', '-a', 'TextEdit', filepath])
+        # return os.system("start " + filepath)
 
 class RenewSixMonths(Action):
     verbose_name = _('Renew 6 Months')
@@ -312,37 +320,78 @@ class AddressLabelsDotMatrix(Action):
     def model_run(self, model_context):
         collection = get_selection_or_collection(model_context)
         total_document = ""
-        count = len(collection)
+        count = 0
+        table = collection[0].__tablename__
+
+        if table == "outco":
+            zone_counts = {}
+            for n in range(0, 9):
+                zone_counts[n] = 0
         
         for a in collection:
+            try:
+                if not a.Tag:
+                    continue
+            except AttributeError:
+                pass
+
             name = name_string(a, curtail=True)
-            name_date = name + str(a.End_Date)
+
+            try:
+                end_date = str(a.End_Date)
+            except AttributeError:
+                end_date = ""
+
+            name_date = name + " " + end_date
 
             address = address_string(a, curtail=True)
             address_id = address + str(a.id)
 
-            city_state_zip = "%s, %s %s" % (a.City, a.State, a.ZIP)
-            citycode_zone = a.City_Code + str(a.Zone)
+            city_state_zip = city_state_zip_string(a, table)
+            try:
+                zone = str(a.Zone)
+                if table == "outco":
+                    zone_counts[int(a.Zone)] += 1
+            except AttributeError:
+                zone = ""
+
+            try:
+                city_code = str(a.City_Code)
+            except AttributeError:
+                city_code = ""
+            citycode_zone = city_code + zone
             
             # line_1 = Name, spaces so that the line adds up to 32char, End_Date
-            line_1 = name + ((32 - (len(name_date)))*" ") + str(a.End_Date) + "\n"
+            line_1 = name + ((33 - (len(name_date)))*" ") + end_date + "\n"
 
             # line_2 = Address, spaces to ensure the line adds up to 32char, ID
             line_2 = address + ((32 - len(address_id))*" ") + str(a.id) + "\n"
 
             # line_3 = City, State, Zip, spaces, City_Code, spaces, Zone
             line_3a = city_state_zip + ((20 - (len(city_state_zip)))*" ")
-            line_3b = ((10 - len(citycode_zone))*" ") + a.City_Code + "  " + a.Zone + "\n"
+            line_3b = ((10 - len(citycode_zone))*" ") + city_code + "  " + zone + "\n"
             line_3 = line_3a + line_3b
 
             contact = line_1 + line_2 + line_3 + "\n"
             
+            count += 1
             total_document += contact       # Extra line break to separate the next label.
-            print total_document + "That was the document"
         
         # The count is displayed in the final label of the printout. So, add it to the list.
-        total_document.join("Count: %s" % count)
+        total_document += ("Total Count: %s\n" % count)
 
+        if table == "outco":
+            for n in range(0, 3):
+                total_document += ("Zone %s: %s " % (n, zone_counts[n]))
+            total_document += "\n"
+            for n in range(3, 6):
+                total_document += ("Zone %s: %s " % (n, zone_counts[n]))
+            total_document += "\n"
+            for n in range(6, 9):
+                total_document += ("Zone %s: %s " % (n, zone_counts[n]))
+
+
+        print total_document
         yield PrintPlainText(total_document)                             
                            
  
@@ -674,8 +723,8 @@ class LC12 (Entity):
     City_Code = Column(Integer())
     
     class Admin(EntityAdmin):
-        verbose_name = 'LC12'
-        verbose_name_plural = 'LC12'
+        verbose_name = 'Lyons County 1&2'
+        verbose_name_plural = 'Lyons County 1&2'
         
         list_display = [
         'Address',
@@ -724,8 +773,8 @@ class VC12345 (Entity):
     City_RTE = Column(Integer())
     
     class Admin(EntityAdmin):
-        verbose_name = 'VC12345'
-        verbose_name_plural = 'VC12345'
+        verbose_name = 'Vidalia County 12345'
+        verbose_name_plural = 'Vidalia County 12345'
         
         list_display = [
         'Address',
