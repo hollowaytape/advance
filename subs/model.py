@@ -2,36 +2,29 @@ import os
 import jinja2
 import datetime
 import calendar
-import datetime
 
-from main import MySettings
-
-from sqlalchemy.schema import Column
-import sqlalchemy.types
-
-from camelot.admin.entity_admin import EntityAdmin
 from camelot.core.orm import Entity
-import camelot.types
+from camelot.admin.entity_admin import EntityAdmin
 
 from sqlalchemy import Unicode, Date, Boolean, Integer, Float
+from sqlalchemy.schema import Column
+from sqlalchemy.sql.operators import between_op
 
-from camelot.admin.action import Action, ActionStep
+from camelot.admin.action import Action
 from camelot.admin.action.list_action import ListContextAction, DeleteSelection
 from camelot.core.utils import ugettext_lazy as _
 from camelot.core.conf import settings
-from camelot.view.art import Icon
 
-from camelot.view.model_thread import get_model_thread
-from camelot.view.action_steps.orm import FlushSession, DeleteObject
+from camelot.view.art import Icon
+from camelot.view.filters import EditorFilter
+from camelot.view.action_steps.orm import FlushSession
 from camelot.view.action_steps.print_preview import PrintHtml, PrintJinjaTemplate, PrintPreview
 from camelot.view.action_steps.update_progress import UpdateProgress
 from camelot.view.action_steps.open_file import OpenFile
-from PyQt4.QtWebKit import QWebPage, QWebView
-from PyQt4.QtCore import QUrl, QFile, QObject, QEventLoop, Qt, QString
-from PyQt4 import QtGui
 
-from camelot.view.filters import EditorFilter
-from sqlalchemy.sql.operators import between_op
+from PyQt4.QtWebKit import QWebView
+from PyQt4.QtCore import QUrl, QObject, QEventLoop, Qt, QThread
+from PyQt4.QtGui import QPrinter, QApplication, QPlainTextEdit
 
 today = datetime.date.today()
 days_in_current_month = calendar.monthrange(today.year, today.month)[1]
@@ -85,6 +78,12 @@ def city_state_zip_string(a, table):
     else:
         return "%s, %s %s" % (a.City, a.State, a.ZIP)
 
+def get_selection_or_collection(model_context):
+    try:
+        a = list(model_context.get_selection())[0]
+        return list(model_context.get_selection())
+    except IndexError:
+        return list(model_context.get_collection())
 
 class PrintHtmlWQ(PrintPreview):    
     # Thanks to Gonzalo from the Camelot Google Group for this image-rendering fix.
@@ -96,8 +95,8 @@ class PrintHtmlWQ(PrintPreview):
         self.margin_top = None
         self.margin_right = None
         self.margin_bottom = None
-        self.margin_unit = QtGui.QPrinter.Millimeter
-        self.page_size = QtGui.QPrinter.Letter
+        self.margin_unit = QPrinter.Millimeter
+        self.page_size = QPrinter.Letter
         self.page_orientation = None
         
         self.template = environment.get_template(template)
@@ -126,45 +125,18 @@ class PrintHtmlWQ(PrintPreview):
         self.finished = True
    
 class PrintPlainText(PrintPreview):
-    # PrintPreview using QPrinter.NativeFormat instead of PdfFormat.
-    def __init__ (self, text):
-        self.document = None
+    def __init__(self, text):
         self.text = text
-        self.printer = None
-        self.margin_left = None
-        self.margin_top = None
-        self.margin_right = None
-        self.margin_bottom = None
-        self.margin_unit = QtGui.QPrinter.Millimeter
-        self.page_size = QtGui.QPrinter.Letter
-        self.page_orientation = None
-        
-    def render(self):
-        self.document = QtGui.QPlainTextEdit(self.text)
+        self.document = QPlainTextEdit()
+        self.thread = QThread.currentThread()
+        self.document.moveToThread(QApplication.instance().thread())
 
-        if not self.printer:
-            self.printer = QtGui.QPrinter()
-        if not self.printer.isValid():
-            self.printer.setOutputFormat( QtGui.QPrinter.NativeFormat )
-        if self.page_size != None:
-            self.printer.setPageSize( self.page_size )
-        if self.page_orientation != None:
-            self.printer.setOrientation( self.page_orientation )
-        dialog = QtGui.QPrintPreviewDialog(self.printer, flags=Qt.Window)
-        dialog.paintRequested.connect( self.paint_on_printer )
-        # show maximized seems to trigger a bug in qt which scrolls the page 
-        # down dialog.showMaximized()
-        desktop = QtGui.QApplication.desktop()
-        available_geometry = desktop.availableGeometry( dialog )
-        # use the size of the screen instead to set the dialog size
-        dialog.resize( available_geometry.width() * 0.75, 
-                       available_geometry.height() * 0.75 )
-        return dialog
+    def gui_run(self, gui_context):
+        filepath = OpenFile.create_temporary_file('.txt')
+        with open(filepath, "w") as text_file:
+            text_file.write(self.text)
+        return os.system("start " + filepath)
 
-    def gui_run( self, gui_context ):
-        dialog = self.render()
-        dialog.exec_()
-       
 class RenewSixMonths(Action):
     verbose_name = _('Renew 6 Months')
     icon = Icon('tango/16x16/actions-document-print-preview.png')
@@ -193,7 +165,7 @@ class RenewalNotice(Action):
     tooltip = _('Print Renewal Notices')
     
     def model_run(self, model_context):
-        collection = list(model_context.get_collection())
+        collection = get_selection_or_collection(model_context)
         count = len(collection)
         subscriptions = []
         conn = model_context.session.begin()
@@ -233,7 +205,7 @@ class AddressList(Action):
     tooltip = _('Print Address List')
 
     def model_run(self, model_context):
-        iterator = model_context.get_collection()
+        iterator = get_selection_or_collection(model_context)
         addresses = []
         for a in iterator:
             # For each address, create a tuple of relevant fields to place in the context dict.
@@ -255,7 +227,7 @@ class AddressList(Action):
         pages = list(chunks(addresses, 32))
         context = {'pages': pages}
                                                
-        yield RenderJinjaHtml(template = 'addresses.html',
+        yield PrintHtmlWQ(template = 'addresses.html',
                               context = context,
                               environment = JINJA_ENVIRONMENT)
         
@@ -266,7 +238,7 @@ class AddressLabels(Action):
     tooltip = _('Print Address Labels (Laser)')
 
     def model_run(self, model_context):
-        collection = list(model_context.get_collection())
+        collection = get_selection_or_collection(model_context)
         addresses = []
         count = len(collection)
         table = collection[0].__tablename__
@@ -338,7 +310,7 @@ class AddressLabelsDotMatrix(Action):
     tooltip = _('Print Address Labels (Dot-Matrix)')
 
     def model_run(self, model_context):
-        collection = list(model_context.get_collection())
+        collection = get_selection_or_collection(model_context)
         total_document = ""
         count = len(collection)
         
@@ -370,11 +342,6 @@ class AddressLabelsDotMatrix(Action):
         
         # The count is displayed in the final label of the printout. So, add it to the list.
         total_document.join("Count: %s" % count)
-
-        try:
-            raise NameError
-        finally:
-            print total_document
 
         yield PrintPlainText(total_document)                             
                            
@@ -437,13 +404,11 @@ class Vidalia (Entity):
         ]
         force_columns_width = [20, 20, 40, 10, 10, 15, 5, 10, 15, 15, 20, 20, 10, 10, 10, 10, 10]
         
-        # Actions for a single record - renewal actions.
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
         ]
         
-        # Actions encompassing the whole table or a selection of it - address labels, address lists, notices.
         list_actions = [
         AddressLabels(),
         AddressLabelsDotMatrix(),
@@ -519,13 +484,11 @@ class Lyons (Entity):
         ]
         force_columns_width = [20, 20, 40, 10, 10, 15, 5, 10, 15, 15, 20, 20, 10, 10, 10, 10, 10]
         
-        # Actions for a single record - renewal actions.
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
         ]
         
-        # Actions encompassing the whole table or a selection of it - address labels, address lists, notices.
         list_actions = [
         AddressLabels(),
         AddressLabelsDotMatrix(),
@@ -601,13 +564,11 @@ class Out304 (Entity):
         ]
         force_columns_width = [20, 20, 40, 10, 10, 15, 5, 10, 15, 15, 20, 20, 10, 10, 10, 10, 10]
         
-        # Actions for a single record - renewal notices.
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
         ]
         
-        # Actions encompassing the whole table or a selection of it - address labels, address lists, notices.
         list_actions = [
         AddressLabels(),
         AddressLabelsDotMatrix(),
@@ -684,13 +645,11 @@ class Outco (Entity):
         ]
         force_columns_width = [20, 20, 40, 10, 10, 15, 5, 10, 15, 15, 20, 20, 10, 10, 10, 10, 10]
         
-        # Actions for a single record - renewal notices.
         form_actions = [
         RenewSixMonths(),
         RenewTwelveMonths(),
         ]
         
-        # Actions encompassing the whole table or a selection of it - address labels, address lists.
         list_actions = [
         AddressLabels(),
         AddressLabelsDotMatrix(),
