@@ -3,7 +3,6 @@ import csv
 import sqlite3
 import datetime
 
-
 conn = sqlite3.connect('subscriptions.db')
 c = conn.cursor()
 

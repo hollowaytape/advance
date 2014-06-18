@@ -37,8 +37,7 @@ def chunks(l, n):
     """ Yield successive n-sized chunks from l. Used to split address lists into page-sized chunks."""
     for i in xrange(0, len(l), n):
         yield l[i:i+n]
-               
-       
+      
 def name_string(a, curtail=False):
     try:
         # Last Names sometimes have "           SR" appended onto them which breaks the labels. Split them.
@@ -133,10 +132,11 @@ class PrintHtmlWQ(PrintPreview):
    
 class PrintPlainText(PrintPreview):
     def __init__(self, text):
+        # super(PrintPlainText, self).__init__(document=None)
         self.text = text
-        self.document = QPlainTextEdit()
-        self.thread = QThread.currentThread()
-        self.document.moveToThread(QApplication.instance().thread())
+        # self.document = QPlainTextEdit()
+        # self.thread = QThread.currentThread()
+        # self.document.moveToThread(QApplication.instance().thread())
 
     def gui_run(self, gui_context):
         filepath = OpenFile.create_temporary_file('.txt')
