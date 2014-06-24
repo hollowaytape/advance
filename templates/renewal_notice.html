@@ -1,0 +1,100 @@
+<html>
+<head>
+    <title>Renewal Notice</title>
+    <style>
+        body {
+            font-family: Helvetica;
+            float: none;
+            }
+        div.page {
+            margin-bottom: 0.224in;
+            }
+        div.detach {
+            margin: 0in 0in 0in; /* "Shift it half an inch to the left: .1875 removed left margin here, testing remove .448in bot */
+            width: 100%;
+            height: 3.16in; /* 4.323in */
+            position: relative;
+            }
+        div.return_window {
+            width: 3.125in;
+            height: 1.0in;
+            
+            margin-top: .35in; /* Mac Margin .25 + page margin .1875 + this .35 = .7875in */
+            
+            text-align: center;
+            font-size: 8px;
+            
+            float: left;
+            overflow: hidden;
+            }
+        div.address_window {
+            width: 3.625in;
+            height: .8in;
+            
+            margin-top: .175in; /* Mac Margin .25 +.1875 page margin + .6 return_window margin_top + 1 return_window height + X = 2.2125 */
+            
+            margin-right: .125in;
+            
+            float: left;
+            overflow: hidden;
+            }
+        </style>
+</head>
+<body>
+{% for page in pages %}
+<div class="page">
+{% for subscription in page %}
+<div class="detach">
+    <table>
+    <tr>
+        <td><div class="return_window"><img src="advance_head.png"></img></div></td>
+ 
+        <td><h2 style="font-family:Arial Bold; align: center; margin: .5in;"><div style="border: 1px transparent; padding; 10px;">Renewal Notice</div></h2></td>
+    </tr>
+    <tr>
+        <td><div class="address_window">
+        <pre>
+        {{ subscription.name }}
+        {{ subscription.address }}
+        {{ subscription.city }}, {{ subscription.state }} {{ subscription.zip }}
+        </pre>
+        </div></td>
+        
+        <td>
+            <table>
+            <tr>
+                <td><b>File Name:</b></td>
+                <td><pre>{{ subscription.file_code }}</pre></td>
+            </tr>
+            <tr>
+                <td><b>Record Number:</b></td>
+                <td><pre>{{ subscription.record_number }}</pre></td>
+            </tr>
+            <tr>
+                <td><b>Expiration Date:</b></td>
+                <td><pre>{{ subscription.expiration_date }}</pre></td>
+            </tr>
+            <tr>
+                <td><b>Amount Due:</b></td>
+                <td><pre>${{ subscription.price_twelve }} 12 months</pre></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td><pre>${{ subscription.price_six }} 6 months</pre></td>
+            </tr>
+            </table>
+        </td>
+    </tr>
+    <tr>
+        <td colspan="2">
+            <hr style="width:80%;text-align:center;">
+            <p style="text-align:center; font-weight:bold; font-size:14px;">PLEASE MAIL PAYMENTS TO: ADVANCE, PO BOX 669 VIDALIA, GA 30475 OR CALL 912.537.3131 FOR CREDIT CARD PAYMENTS</p>
+        </td>
+    </tr>
+</table>
+</div>
+{% endfor %}
+</div>
+{% endfor %}
+</body>
+</html>
