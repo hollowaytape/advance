@@ -4,6 +4,8 @@ import datetime
 import calendar
 import subprocess
 
+from operator import attrgetter
+
 from camelot.core.orm import Entity
 from camelot.admin.entity_admin import EntityAdmin
 
@@ -84,12 +86,16 @@ def city_state_zip_string(a, table):
     else:
         return "%s, %s %s" % (a.City, a.State, a.ZIP)
 
-def get_selection_or_collection(model_context):
+def sort_contacts(contacts):
+    return sorted(contacts, key=attrgetter('Walk_Sequence', 'City_Code'))
+        
+def get_sorted_selection_or_collection(model_context):
     try:
-        a = list(model_context.get_selection())[0]
-        return list(model_context.get_selection())
+        a = list(model_context.get_selection())[0]      # Check if the selection has nonzero items. Throw exception if not.
+        l =  list(model_context.get_selection())
+        return sort_contacts(l)
     except IndexError:
-        return list(model_context.get_collection())
+        return sort_contacts(list(model_context.get_collection()))
 
 class PrintHtmlWQ(PrintPreview):    
     # Thanks to Gonzalo from the Camelot Google Group for this image-rendering fix.
@@ -173,7 +179,7 @@ class RenewalNotice(Action):
     tooltip = _('Print Renewal Notices')
     
     def model_run(self, model_context):
-        collection = get_selection_or_collection(model_context)
+        collection = get_sorted_selection_or_collection(model_context)
         count = len(collection)
         subscriptions = []
         conn = model_context.session.begin()
@@ -213,7 +219,7 @@ class AddressList(Action):
     tooltip = _('Print Address List')
 
     def model_run(self, model_context):
-        iterator = get_selection_or_collection(model_context)
+        iterator = get_sorted_selection_or_collection(model_context)
         addresses = []
         for a in iterator:
             # For each address, create a tuple of relevant fields to place in the context dict.
@@ -246,7 +252,7 @@ class AddressLabels(Action):
     tooltip = _('Print Address Labels (Laser)')
 
     def model_run(self, model_context):
-        collection = get_selection_or_collection(model_context)
+        collection = get_sorted_selection_or_collection(model_context)
         addresses = []
         count = len(collection)
         table = collection[0].__tablename__
@@ -318,7 +324,7 @@ class AddressLabelsDotMatrix(Action):
     tooltip = _('Print Address Labels (Dot-Matrix)')
 
     def model_run(self, model_context):
-        collection = get_selection_or_collection(model_context)
+        collection = get_sorted_selection_or_collection(model_context)
         total_document = ""
         count = 0
         table = collection[0].__tablename__
@@ -362,13 +368,13 @@ class AddressLabelsDotMatrix(Action):
             citycode_zone = city_code + zone
             
             # line_1 = Name, spaces so that the line adds up to 32char, End_Date
-            line_1 = name + ((33 - (len(name_date)))*" ") + end_date + "\n"
+            line_1 = 24*" " + name + ((33 - (len(name_date)))*" ") + end_date + "\n"
 
             # line_2 = Address, spaces to ensure the line adds up to 32char, ID
-            line_2 = address + ((32 - len(address_id))*" ") + str(a.id) + "\n"
+            line_2 = 24*" " + address + ((32 - len(address_id))*" ") + str(a.id) + "\n"
 
             # line_3 = City, State, Zip, spaces, City_Code, spaces, Zone
-            line_3a = city_state_zip + ((20 - (len(city_state_zip)))*" ")
+            line_3a = 24*" " + city_state_zip + ((20 - (len(city_state_zip)))*" ")
             line_3b = ((10 - len(citycode_zone))*" ") + city_code + "  " + zone + "\n"
             line_3 = line_3a + line_3b
 
