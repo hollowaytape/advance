@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 """
     Advance Subscription Program: organizes subscription records and generates print reports.
     Copyright (C) 2014, 2015 Max Silbiger.
@@ -17,8 +16,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-=======
->>>>>>> 6d49858f9ae834c1b3710eafc783d8845af1dae2
 import os
 import csv
 import sqlite3

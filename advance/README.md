@@ -5,4 +5,4 @@ Internal tools for a newspaper company. Sorts and searches through subscriptions
 
 Freelance project during February-June 2014. Uses the Camelot GUI framework.
 
-Copyright (C) 2014, 2015 Max Silbiger. Released under GNU GPL Version 3.
+Released under GNU GPL Version 3.
