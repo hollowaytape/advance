@@ -1,4 +1,4 @@
-advance
+camelot-subscriptions
 =======
 
 Internal tools for a newspaper company. Sorts and searches through subscriptions, generates print reports and address labels.
